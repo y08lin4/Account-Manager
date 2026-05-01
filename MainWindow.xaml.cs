@@ -720,7 +720,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             Directory.CreateDirectory(backupDirectory);
             _database.CreateDatabaseBackup(backupPath);
-            MessageBox.Show(this, backupPath, "备份完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppDialog.Success(this, "备份完成", "完整数据库备份已创建。", backupPath);
         }
         catch (Exception ex)
         {
@@ -825,9 +825,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 ? Directory.EnumerateFiles(backupDirectory, "AccountManager_Backup_*.db").Count()
                 : 0;
 
-            var message = new StringBuilder()
-                .AppendLine(health.Ok ? "数据库检查通过" : "数据库检查发现问题")
-                .AppendLine()
+            var details = new StringBuilder()
                 .AppendLine($"数据库：{health.DatabasePath}")
                 .AppendLine($"文件存在：{(health.DatabaseExists ? "是" : "否")}")
                 .AppendLine($"文件大小：{health.DatabaseSizeBytes:N0} 字节")
@@ -845,14 +843,21 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
             if (!string.IsNullOrWhiteSpace(health.Error))
             {
-                message.AppendLine().AppendLine($"错误：{health.Error}");
+                details.AppendLine().AppendLine($"错误：{health.Error}");
             }
 
-            MessageBox.Show(this, message.ToString(), "数据库检查", MessageBoxButton.OK, health.Ok ? MessageBoxImage.Information : MessageBoxImage.Warning);
+            if (health.Ok)
+            {
+                AppDialog.Success(this, "数据库检查", "数据库检查通过。", details.ToString());
+            }
+            else
+            {
+                AppDialog.Warning(this, "数据库检查", "数据库检查发现问题。", details.ToString());
+            }
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "数据库检查失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Error(this, "数据库检查失败", ex.Message);
         }
     }
 
