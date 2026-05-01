@@ -171,6 +171,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }), DispatcherPriority.Background);
     }
 
+    private void ToolbarMenuButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.ContextMenu is null) return;
+
+        button.ContextMenu.PlacementTarget = button;
+        button.ContextMenu.Placement = PlacementMode.Bottom;
+        button.ContextMenu.IsOpen = true;
+    }
+
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         SearchText = SearchBox.Text;
