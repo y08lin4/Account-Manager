@@ -566,6 +566,32 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
+    private void ApiInfo_Click(object sender, RoutedEventArgs e)
+    {
+        var status = _apiServer.IsRunning
+            ? "已启动"
+            : $"未启动{(string.IsNullOrWhiteSpace(_apiServer.LastError) ? string.Empty : "：" + _apiServer.LastError)}";
+
+        var text = new StringBuilder()
+            .AppendLine("本地 API")
+            .AppendLine()
+            .AppendLine($"状态：{status}")
+            .AppendLine($"地址：{_apiServer.BaseUrl}")
+            .AppendLine($"Token：{_apiServer.TokenFilePath}")
+            .AppendLine()
+            .AppendLine("请求头：Authorization: Bearer <token>")
+            .AppendLine()
+            .AppendLine("常用接口：")
+            .AppendLine("GET  /api/v1/accounts")
+            .AppendLine("POST /api/v1/accounts")
+            .AppendLine("POST /api/v1/import")
+            .AppendLine()
+            .AppendLine("完整说明见 API.md")
+            .ToString();
+
+        MessageBox.Show(this, text, "API", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
     private void Lock_Click(object sender, RoutedEventArgs e)
     {
         _apiServer.Stop();

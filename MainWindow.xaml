@@ -46,6 +46,7 @@
                 <Button Style="{StaticResource ToolbarTextButton}" Content="导出CSV" ToolTip="导出当前列表为 CSV" Click="ExportCsv_Click"/>
                 <Button Style="{StaticResource ToolbarTextButton}" Content="备份" ToolTip="创建完整数据库备份" Click="CreateBackup_Click"/>
                 <Button Style="{StaticResource ToolbarTextButton}" Content="恢复" ToolTip="从备份恢复数据库" Click="RestoreBackup_Click"/>
+                <Button Style="{StaticResource ToolbarTextButton}" Content="API" ToolTip="查看本地 API 地址、Token 和常用接口" Click="ApiInfo_Click"/>
                 <Button Style="{StaticResource ToolbarTextButton}" Content="设置" ToolTip="修改主密码、提示词和保护问题" Click="SecuritySettings_Click"/>
                 <Button Style="{StaticResource ToolbarTextButton}" Content="锁定" ToolTip="锁定并重新打开解锁页" Click="Lock_Click"/>
             </StackPanel>
