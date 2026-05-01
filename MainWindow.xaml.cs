@@ -18,6 +18,8 @@ namespace AccountManager;
 public partial class MainWindow : Window, INotifyPropertyChanged
 {
     private const int ClipboardClearSeconds = 30;
+    private const string CompactWindowMode = "compact";
+    private const string ExpandedWindowMode = "expanded";
 
     private readonly AccountDatabase _database;
     private readonly SecurityService _security;
@@ -32,6 +34,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private long _editingId;
     private string _searchText = string.Empty;
     private bool _refreshingFilters;
+    private bool _compactMode = true;
+    private bool _syncingSelection;
     private bool _editingEmail;
     private bool _showPassword;
     private bool _editingPassword;
@@ -67,8 +71,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         DataContext = this;
         Title = $"AccountManager - {AppPaths.BuildMode}";
         AccountsGrid.ItemsSource = _visibleAccounts;
+        CompactAccountsList.ItemsSource = _visibleAccounts;
         CategoryListBox.ItemsSource = _categoryFilters;
         TagListBox.ItemsSource = _tagFilters;
+        ApplySavedViewMode();
 
         _clipboardTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(ClipboardClearSeconds) };
         _clipboardTimer.Tick += ClipboardTimer_Tick;
@@ -171,6 +177,110 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }), DispatcherPriority.Background);
     }
 
+    private void ApplySavedViewMode()
+    {
+        var mode = _database.GetSetting(AppSettingKeys.WindowMode);
+        var compact = !string.Equals(mode, ExpandedWindowMode, StringComparison.OrdinalIgnoreCase);
+        ApplyViewMode(compact, persist: false, resizeWindow: true);
+    }
+
+    private void ViewModeButton_Click(object sender, RoutedEventArgs e)
+    {
+        ApplyViewMode(!_compactMode, persist: true, resizeWindow: true);
+        SearchBox.Focus();
+    }
+
+    private void ApplyViewMode(bool compact, bool persist, bool resizeWindow)
+    {
+        _compactMode = compact;
+        ViewModeButton.Content = compact ? "展开" : "收起";
+        ViewModeButton.ToolTip = compact ? "切换到大窗口管理模式" : "切换到小窗日常模式";
+
+        if (compact)
+        {
+            MinWidth = 380;
+            MinHeight = 560;
+            if (resizeWindow)
+            {
+                Width = 440;
+                Height = 760;
+            }
+
+            FilterColumn.Width = new GridLength(0);
+            FirstSeparatorColumn.Width = new GridLength(0);
+            ListColumn.MinWidth = 0;
+            ListColumn.Width = new GridLength(1, GridUnitType.Star);
+            SecondSeparatorColumn.Width = new GridLength(0);
+            DetailColumn.Width = new GridLength(0);
+
+            MainListRow.Height = new GridLength(1, GridUnitType.Star);
+            MainHorizontalSeparatorRow.Height = new GridLength(1);
+            MainDetailRow.Height = new GridLength(286);
+
+            SidebarPanel.Visibility = Visibility.Collapsed;
+            FirstVerticalSeparator.Visibility = Visibility.Collapsed;
+            SecondVerticalSeparator.Visibility = Visibility.Collapsed;
+            HorizontalSeparator.Visibility = Visibility.Visible;
+            AccountsGrid.Visibility = Visibility.Collapsed;
+            CompactAccountsList.Visibility = Visibility.Visible;
+
+            Grid.SetRow(ListPanel, 0);
+            Grid.SetColumn(ListPanel, 2);
+            ListPanel.Margin = new Thickness(0);
+
+            Grid.SetRow(HorizontalSeparator, 1);
+            Grid.SetColumn(HorizontalSeparator, 2);
+
+            Grid.SetRow(DetailPanel, 2);
+            Grid.SetColumn(DetailPanel, 2);
+            DetailPanel.Margin = new Thickness(0, 8, 0, 0);
+        }
+        else
+        {
+            MinWidth = 820;
+            MinHeight = 560;
+            if (resizeWindow)
+            {
+                Width = Math.Max(980, Width);
+                Height = Math.Max(680, Height);
+            }
+
+            FilterColumn.Width = new GridLength(128);
+            FirstSeparatorColumn.Width = new GridLength(1);
+            ListColumn.MinWidth = 360;
+            ListColumn.Width = new GridLength(1, GridUnitType.Star);
+            SecondSeparatorColumn.Width = new GridLength(1);
+            DetailColumn.Width = new GridLength(270);
+
+            MainListRow.Height = new GridLength(1, GridUnitType.Star);
+            MainHorizontalSeparatorRow.Height = new GridLength(0);
+            MainDetailRow.Height = new GridLength(0);
+
+            SidebarPanel.Visibility = Visibility.Visible;
+            FirstVerticalSeparator.Visibility = Visibility.Visible;
+            SecondVerticalSeparator.Visibility = Visibility.Visible;
+            HorizontalSeparator.Visibility = Visibility.Collapsed;
+            AccountsGrid.Visibility = Visibility.Visible;
+            CompactAccountsList.Visibility = Visibility.Collapsed;
+
+            Grid.SetRow(ListPanel, 0);
+            Grid.SetColumn(ListPanel, 2);
+            ListPanel.Margin = new Thickness(8, 0, 8, 0);
+
+            Grid.SetRow(DetailPanel, 0);
+            Grid.SetColumn(DetailPanel, 4);
+            DetailPanel.Margin = new Thickness(8, 0, 0, 0);
+        }
+
+        if (persist)
+        {
+            _database.SetSettings(new Dictionary<string, string>
+            {
+                [AppSettingKeys.WindowMode] = compact ? CompactWindowMode : ExpandedWindowMode
+            });
+        }
+    }
+
     private void ToolbarMenuButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button button || button.ContextMenu is null) return;
@@ -194,6 +304,27 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void AccountsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (AccountsGrid.SelectedItem is not AccountRecord account) return;
+        if (_syncingSelection) return;
+
+        _syncingSelection = true;
+        CompactAccountsList.SelectedItem = account;
+        SelectAccount(account);
+        _syncingSelection = false;
+    }
+
+    private void CompactAccountsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CompactAccountsList.SelectedItem is not AccountRecord account) return;
+        if (_syncingSelection) return;
+
+        _syncingSelection = true;
+        AccountsGrid.SelectedItem = account;
+        SelectAccount(account);
+        _syncingSelection = false;
+    }
+
+    private void SelectAccount(AccountRecord account)
+    {
         _editingId = account.Id;
         _editingEmail = false;
         EmailBox.IsReadOnly = true;
@@ -209,6 +340,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (GetSelectedAccount() is not null) CopySelectedLine_Click(sender, e);
     }
 
+    private void CompactAccountsList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (GetSelectedAccount() is not null) CopySelectedLine_Click(sender, e);
+    }
+
     private void AccountsGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         var row = FindVisualParent<DataGridRow>((DependencyObject)e.OriginalSource);
@@ -216,6 +352,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             row.IsSelected = true;
             row.Focus();
+        }
+    }
+
+    private void CompactAccountsList_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var item = FindVisualParent<ListBoxItem>((DependencyObject)e.OriginalSource);
+        if (item is not null)
+        {
+            item.IsSelected = true;
+            item.Focus();
         }
     }
 
@@ -244,7 +390,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         CategoryBox.Clear();
         TagsBox.Clear();
         RemarkBox.Clear();
+        _syncingSelection = true;
         AccountsGrid.SelectedItem = null;
+        CompactAccountsList.SelectedItem = null;
+        _syncingSelection = false;
         EmailBox.Focus();
     }
 
@@ -851,7 +1000,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         RefreshTotpDisplay();
     }
 
-    private AccountRecord? GetSelectedAccount() => AccountsGrid.SelectedItem as AccountRecord;
+    private AccountRecord? GetSelectedAccount()
+    {
+        return (_compactMode ? CompactAccountsList.SelectedItem : AccountsGrid.SelectedItem) as AccountRecord
+               ?? AccountsGrid.SelectedItem as AccountRecord
+               ?? CompactAccountsList.SelectedItem as AccountRecord;
+    }
 
     private void CopyEmail_Click(object sender, RoutedEventArgs e) => CopyText(EmailBox.Text, "邮箱已复制");
     private void CopyPassword_Click(object sender, RoutedEventArgs e) => CopyText(GetPasswordText(), "密码已复制");
