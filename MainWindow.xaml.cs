@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -25,13 +26,17 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly ObservableCollection<FilterItem> _categoryFilters = new();
     private readonly ObservableCollection<FilterItem> _tagFilters = new();
     private readonly DispatcherTimer _clipboardTimer;
+    private readonly DispatcherTimer _totpTimer;
 
     private List<AccountRecord> _allAccounts = new();
     private long _editingId;
     private string _searchText = string.Empty;
     private bool _refreshingFilters;
     private bool _showPassword;
-    private bool _showTwoFa;
+    private bool _editingPassword;
+    private bool _editingTwoFa;
+    private string _passwordValue = string.Empty;
+    private string _twoFaSecret = string.Empty;
     private string? _lastCopiedText;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -60,6 +65,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         _clipboardTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(ClipboardClearSeconds) };
         _clipboardTimer.Tick += ClipboardTimer_Tick;
+        _totpTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _totpTimer.Tick += (_, _) => RefreshTotpDisplay();
+        _totpTimer.Start();
 
         Loaded += (_, _) =>
         {
@@ -525,42 +533,170 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void TogglePassword_Click(object sender, RoutedEventArgs e)
     {
-        var password = GetPasswordText();
-        var twoFa = GetTwoFaText();
+        CommitSecretEdits();
         _showPassword = !_showPassword;
-        SetSecrets(password, twoFa);
-    }
-
-    private void ToggleTwoFa_Click(object sender, RoutedEventArgs e)
-    {
-        var password = GetPasswordText();
-        var twoFa = GetTwoFaText();
-        _showTwoFa = !_showTwoFa;
-        SetSecrets(password, twoFa);
+        RefreshPasswordDisplay();
     }
 
     private void SetSecrets(string password, string twoFa)
     {
-        PasswordHiddenBox.Password = password;
-        PasswordTextBox.Text = password;
-        TwoFaHiddenBox.Password = twoFa;
-        TwoFaTextBox.Text = twoFa;
-        UpdateSecretVisibility();
+        _passwordValue = password;
+        _twoFaSecret = twoFa;
+        _editingPassword = false;
+        _editingTwoFa = false;
+        RefreshPasswordDisplay();
+        RefreshTotpDisplay();
     }
 
-    private void UpdateSecretVisibility()
+    private void RefreshPasswordDisplay()
     {
-        PasswordHiddenBox.Visibility = _showPassword ? Visibility.Collapsed : Visibility.Visible;
-        PasswordTextBox.Visibility = _showPassword ? Visibility.Visible : Visibility.Collapsed;
-        TogglePasswordButton.Content = _showPassword ? "隐藏" : "显示";
+        if (_editingPassword) return;
 
-        TwoFaHiddenBox.Visibility = _showTwoFa ? Visibility.Collapsed : Visibility.Visible;
-        TwoFaTextBox.Visibility = _showTwoFa ? Visibility.Visible : Visibility.Collapsed;
-        ToggleTwoFaButton.Content = _showTwoFa ? "隐藏" : "显示";
+        PasswordBox.IsReadOnly = true;
+        PasswordBox.Text = _showPassword ? _passwordValue : MaskSecret(_passwordValue);
+        TogglePasswordButton.Opacity = _showPassword ? 1.0 : 0.72;
     }
 
-    private string GetPasswordText() => _showPassword ? PasswordTextBox.Text : PasswordHiddenBox.Password;
-    private string GetTwoFaText() => _showTwoFa ? TwoFaTextBox.Text : TwoFaHiddenBox.Password;
+    private void RefreshTotpDisplay()
+    {
+        if (_editingTwoFa) return;
+
+        TwoFaCodeBox.IsReadOnly = true;
+        if (string.IsNullOrWhiteSpace(_twoFaSecret))
+        {
+            TwoFaCodeBox.Text = string.Empty;
+            return;
+        }
+
+        TwoFaCodeBox.Text = TotpService.TryGenerateCode(_twoFaSecret, out var code, out var secondsRemaining)
+            ? $"{code}  ({secondsRemaining}s)"
+            : "2FA密钥无效";
+    }
+
+    private static string MaskSecret(string value)
+    {
+        return string.IsNullOrEmpty(value) ? string.Empty : new string('●', Math.Min(Math.Max(value.Length, 6), 18));
+    }
+
+    private string GetPasswordText()
+    {
+        if (_editingPassword) CommitPasswordEdit();
+        return _passwordValue;
+    }
+
+    private string GetTwoFaText()
+    {
+        if (_editingTwoFa) CommitTwoFaEdit();
+        return _twoFaSecret;
+    }
+
+    private string GetCurrentTotpCode()
+    {
+        return TotpService.TryGenerateCode(GetTwoFaText(), out var code, out _) ? code : string.Empty;
+    }
+
+    private void PasswordBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount >= 2)
+        {
+            BeginPasswordEdit();
+            e.Handled = true;
+            return;
+        }
+
+        if (!_editingPassword)
+        {
+            CopyText(_passwordValue, "密码已复制");
+            e.Handled = true;
+        }
+    }
+
+    private void TwoFaCodeBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount >= 2)
+        {
+            BeginTwoFaEdit();
+            e.Handled = true;
+            return;
+        }
+
+        if (!_editingTwoFa)
+        {
+            var code = GetCurrentTotpCode();
+            if (!string.IsNullOrEmpty(code)) CopyText(code, "2FA验证码已复制");
+            e.Handled = true;
+        }
+    }
+
+    private void BeginPasswordEdit()
+    {
+        _editingPassword = true;
+        PasswordBox.IsReadOnly = false;
+        PasswordBox.Text = _passwordValue;
+        PasswordBox.Focus();
+        PasswordBox.SelectAll();
+        StatusText.Text = "正在编辑密码";
+    }
+
+    private void BeginTwoFaEdit()
+    {
+        _editingTwoFa = true;
+        TwoFaCodeBox.IsReadOnly = false;
+        TwoFaCodeBox.FontFamily = new FontFamily("Consolas");
+        TwoFaCodeBox.Text = _twoFaSecret;
+        TwoFaCodeBox.Focus();
+        TwoFaCodeBox.SelectAll();
+        StatusText.Text = "正在编辑2FA密钥";
+    }
+
+    private void PasswordBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (_editingPassword) CommitPasswordEdit();
+    }
+
+    private void TwoFaCodeBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (_editingTwoFa) CommitTwoFaEdit();
+    }
+
+    private void SecretEditBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            CommitSecretEdits();
+            Keyboard.ClearFocus();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            _editingPassword = false;
+            _editingTwoFa = false;
+            RefreshPasswordDisplay();
+            RefreshTotpDisplay();
+            Keyboard.ClearFocus();
+            e.Handled = true;
+        }
+    }
+
+    private void CommitSecretEdits()
+    {
+        if (_editingPassword) CommitPasswordEdit();
+        if (_editingTwoFa) CommitTwoFaEdit();
+    }
+
+    private void CommitPasswordEdit()
+    {
+        _passwordValue = PasswordBox.Text;
+        _editingPassword = false;
+        RefreshPasswordDisplay();
+    }
+
+    private void CommitTwoFaEdit()
+    {
+        _twoFaSecret = TwoFaCodeBox.Text.Trim();
+        _editingTwoFa = false;
+        RefreshTotpDisplay();
+    }
 
     private AccountRecord? GetSelectedAccount() => AccountsGrid.SelectedItem as AccountRecord;
 
@@ -596,11 +732,34 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void CopyText(string text, string status)
     {
         if (string.IsNullOrEmpty(text)) return;
-        Clipboard.SetText(text);
+        if (!TrySetClipboardText(text))
+        {
+            StatusText.Text = "剪贴板被占用，请重试";
+            return;
+        }
+
         _lastCopiedText = text;
         _clipboardTimer.Stop();
         _clipboardTimer.Start();
         StatusText.Text = $"{status} · {ClipboardClearSeconds}s 后清空剪贴板";
+    }
+
+    private static bool TrySetClipboardText(string text)
+    {
+        for (var i = 0; i < 8; i++)
+        {
+            try
+            {
+                Clipboard.SetText(text);
+                return true;
+            }
+            catch (COMException)
+            {
+                Thread.Sleep(40);
+            }
+        }
+
+        return false;
     }
 
     private void ClipboardTimer_Tick(object? sender, EventArgs e)

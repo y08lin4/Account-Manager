@@ -170,25 +170,39 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <PasswordBox x:Name="PasswordHiddenBox" Height="28"/>
-                            <TextBox x:Name="PasswordTextBox" Height="28" Visibility="Collapsed"/>
-                            <Button x:Name="TogglePasswordButton" Grid.Column="1" Content="显示" Width="52" Height="26" Margin="4,0,0,0" ToolTip="显示/隐藏密码" Click="TogglePassword_Click"/>
-                            <Button Grid.Column="2" Content="复制密码" Width="72" Height="26" Margin="4,0,0,0" Click="CopyPassword_Click"/>
+                            <TextBox x:Name="PasswordBox"
+                                     Height="28"
+                                     IsReadOnly="True"
+                                     ToolTip="单击复制，双击编辑"
+                                     PreviewMouseLeftButtonDown="PasswordBox_PreviewMouseLeftButtonDown"
+                                     LostKeyboardFocus="PasswordBox_LostKeyboardFocus"
+                                     KeyDown="SecretEditBox_KeyDown"/>
+                            <Button x:Name="TogglePasswordButton"
+                                    Grid.Column="1"
+                                    FontFamily="Segoe MDL2 Assets"
+                                    Content="&#xE890;"
+                                    Width="34"
+                                    Height="26"
+                                    Margin="4,0,0,0"
+                                    ToolTip="显示/隐藏密码"
+                                    Click="TogglePassword_Click"/>
                         </Grid>
 
                         <TextBlock Style="{StaticResource FieldLabel}" Text="2FA"/>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <PasswordBox x:Name="TwoFaHiddenBox" Height="28"/>
-                            <TextBox x:Name="TwoFaTextBox" Height="28" Visibility="Collapsed"/>
-                            <Button x:Name="ToggleTwoFaButton" Grid.Column="1" Content="显示" Width="52" Height="26" Margin="4,0,0,0" ToolTip="显示/隐藏2FA" Click="ToggleTwoFa_Click"/>
-                            <Button Grid.Column="2" Content="复制2FA" Width="72" Height="26" Margin="4,0,0,0" Click="CopyTwoFa_Click"/>
+                            <TextBox x:Name="TwoFaCodeBox"
+                                     Height="28"
+                                     IsReadOnly="True"
+                                     FontFamily="Consolas"
+                                     FontSize="15"
+                                     ToolTip="单击复制验证码，双击编辑密钥"
+                                     PreviewMouseLeftButtonDown="TwoFaCodeBox_PreviewMouseLeftButtonDown"
+                                     LostKeyboardFocus="TwoFaCodeBox_LostKeyboardFocus"
+                                     KeyDown="SecretEditBox_KeyDown"/>
                         </Grid>
 
                         <TextBlock Style="{StaticResource FieldLabel}" Text="分类"/>

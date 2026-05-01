@@ -1,25 +1,24 @@
 ﻿using AccountManager.Services;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Shapes;
 
 namespace AccountManager;
 
 public partial class UnlockWindow : Window
 {
+    private const int UnlockLength = 6;
     private readonly SecurityService _security;
+    private bool _checking;
     private bool _showPassword;
-    private bool _syncingPassword;
 
     public UnlockWindow(SecurityService security)
     {
         InitializeComponent();
         _security = security;
         HintText.Text = string.IsNullOrWhiteSpace(security.PasswordHint) ? "提示词：未设置" : $"提示词：{security.PasswordHint}";
-        Loaded += (_, _) =>
-        {
-            PasswordBox.Focus();
-            UpdateCapsLockState();
-        };
+        Loaded += (_, _) => HiddenPasswordBox.Focus();
     }
 
     private void Unlock_Click(object sender, RoutedEventArgs e)
@@ -27,82 +26,70 @@ public partial class UnlockWindow : Window
         TryUnlock();
     }
 
-    private void PasswordInput_KeyDown(object sender, KeyEventArgs e)
+    private void HiddenPasswordBox_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter) TryUnlock();
     }
 
-    private void PasswordInput_KeyUp(object sender, KeyEventArgs e)
+    private void HiddenPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
     {
-        UpdateCapsLockState();
-    }
-
-    private void PasswordInput_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
-    {
-        UpdateCapsLockState();
-    }
-
-    private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
-    {
-        if (_syncingPassword || _showPassword) return;
-        _syncingPassword = true;
-        PasswordTextBox.Text = PasswordBox.Password;
-        _syncingPassword = false;
         ErrorText.Text = string.Empty;
+        UpdateDots();
+        UpdateVisiblePassword();
+
+        if (!_checking && HiddenPasswordBox.Password.Length == UnlockLength)
+        {
+            TryUnlock();
+        }
     }
 
-    private void PasswordTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    private void Window_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (_syncingPassword || !_showPassword) return;
-        _syncingPassword = true;
-        PasswordBox.Password = PasswordTextBox.Text;
-        _syncingPassword = false;
-        ErrorText.Text = string.Empty;
+        HiddenPasswordBox.Focus();
     }
 
-    private void TogglePassword_Click(object sender, RoutedEventArgs e)
+    private void ToggleVisible_Click(object sender, RoutedEventArgs e)
     {
         _showPassword = !_showPassword;
-        _syncingPassword = true;
-        if (_showPassword)
-        {
-            PasswordTextBox.Text = PasswordBox.Password;
-            PasswordTextBox.Visibility = Visibility.Visible;
-            PasswordBox.Visibility = Visibility.Collapsed;
-            TogglePasswordButton.Content = "隐藏";
-            PasswordTextBox.Focus();
-            PasswordTextBox.CaretIndex = PasswordTextBox.Text.Length;
-        }
-        else
-        {
-            PasswordBox.Password = PasswordTextBox.Text;
-            PasswordBox.Visibility = Visibility.Visible;
-            PasswordTextBox.Visibility = Visibility.Collapsed;
-            TogglePasswordButton.Content = "显示";
-            PasswordBox.Focus();
-        }
-        _syncingPassword = false;
+        UpdateVisiblePassword();
+        HiddenPasswordBox.Focus();
     }
 
     private void TryUnlock()
     {
-        var password = _showPassword ? PasswordTextBox.Text : PasswordBox.Password;
-        if (_security.TryUnlock(password))
+        if (_checking) return;
+        _checking = true;
+
+        if (_security.TryUnlock(HiddenPasswordBox.Password))
         {
             DialogResult = true;
             return;
         }
 
-        PasswordBox.Clear();
-        PasswordTextBox.Clear();
-        ErrorText.Text = "主密码错误";
-        if (_showPassword) PasswordTextBox.Focus();
-        else PasswordBox.Focus();
+        HiddenPasswordBox.Clear();
+        UpdateDots();
+        ErrorText.Text = "密码错误";
+        HiddenPasswordBox.Focus();
+        _checking = false;
     }
 
-    private void UpdateCapsLockState()
+    private void UpdateDots()
     {
-        CapsLockText.Visibility = Keyboard.IsKeyToggled(Key.CapsLock) ? Visibility.Visible : Visibility.Collapsed;
+        var length = HiddenPasswordBox.Password.Length;
+        var dots = new[] { Dot1, Dot2, Dot3, Dot4, Dot5, Dot6 };
+        for (var i = 0; i < dots.Length; i++)
+        {
+            dots[i].Fill = i < length ? Brushes.Black : Brushes.Transparent;
+            dots[i].Stroke = i < length ? Brushes.Black : Brushes.Gray;
+        }
+    }
+
+    private void UpdateVisiblePassword()
+    {
+        DotsPanel.Visibility = _showPassword ? Visibility.Collapsed : Visibility.Visible;
+        VisiblePasswordText.Visibility = _showPassword ? Visibility.Visible : Visibility.Collapsed;
+        VisiblePasswordText.Text = HiddenPasswordBox.Password;
+        ToggleVisibleButton.Opacity = _showPassword ? 1.0 : 0.72;
     }
 
     private void Recover_Click(object sender, RoutedEventArgs e)
