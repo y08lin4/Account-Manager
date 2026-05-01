@@ -37,6 +37,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private bool _editingTwoFa;
     private string _passwordValue = string.Empty;
     private string _twoFaSecret = string.Empty;
+    private string _lastTotpSecret = string.Empty;
+    private long _lastTotpStep = -1;
+    private string _lastTotpCode = string.Empty;
+    private bool _lastTotpValid;
     private string? _lastCopiedText;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -564,13 +568,55 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         TwoFaCodeBox.IsReadOnly = true;
         if (string.IsNullOrWhiteSpace(_twoFaSecret))
         {
-            TwoFaCodeBox.Text = string.Empty;
+            SetTotpTextIfChanged(string.Empty);
+            _lastTotpSecret = string.Empty;
+            _lastTotpStep = -1;
+            _lastTotpCode = string.Empty;
+            _lastTotpValid = false;
             return;
         }
 
-        TwoFaCodeBox.Text = TotpService.TryGenerateCode(_twoFaSecret, out var code, out var secondsRemaining)
-            ? $"{code}  ({secondsRemaining}s)"
-            : "2FA密钥无效";
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var step = now / 30;
+        var secondsRemaining = 30 - (int)(now % 30);
+
+        if (step == _lastTotpStep && string.Equals(_twoFaSecret, _lastTotpSecret, StringComparison.Ordinal))
+        {
+            if (_lastTotpValid)
+            {
+                SetTotpTextIfChanged($"{_lastTotpCode}  ({secondsRemaining}s)");
+            }
+            else
+            {
+                SetTotpTextIfChanged("2FA密钥无效");
+            }
+            return;
+        }
+
+        if (TotpService.TryGenerateCode(_twoFaSecret, out var code, out _))
+        {
+            _lastTotpSecret = _twoFaSecret;
+            _lastTotpStep = step;
+            _lastTotpCode = code;
+            _lastTotpValid = true;
+            SetTotpTextIfChanged($"{code}  ({secondsRemaining}s)");
+        }
+        else
+        {
+            _lastTotpSecret = _twoFaSecret;
+            _lastTotpStep = step;
+            _lastTotpCode = string.Empty;
+            _lastTotpValid = false;
+            SetTotpTextIfChanged("2FA密钥无效");
+        }
+    }
+
+    private void SetTotpTextIfChanged(string value)
+    {
+        if (!string.Equals(TwoFaCodeBox.Text, value, StringComparison.Ordinal))
+        {
+            TwoFaCodeBox.Text = value;
+        }
     }
 
     private static string MaskSecret(string value)
