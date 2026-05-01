@@ -7,6 +7,8 @@ namespace AccountManager;
 
 public partial class QuickImportWindow : Window
 {
+    private readonly List<string> _existingEmails;
+
     public string ImportText => ImportTextBox.Text;
     public string DefaultCategory => CategoryBox.Text;
     public string DefaultTags => TagsBox.Text;
@@ -17,9 +19,10 @@ public partial class QuickImportWindow : Window
         _ => DuplicateMode.Skip
     };
 
-    public QuickImportWindow(string initialText = "", string defaultCategory = "", string defaultTags = "")
+    public QuickImportWindow(string initialText = "", string defaultCategory = "", string defaultTags = "", IEnumerable<string>? existingEmails = null)
     {
         InitializeComponent();
+        _existingEmails = existingEmails?.ToList() ?? new List<string>();
         ImportTextBox.Text = initialText;
         CategoryBox.Text = defaultCategory;
         TagsBox.Text = defaultTags;
@@ -32,6 +35,11 @@ public partial class QuickImportWindow : Window
 
     private void Preview_Click(object sender, RoutedEventArgs e) => UpdatePreview();
 
+    private void DuplicateBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (IsLoaded) UpdatePreview();
+    }
+
     private void Import_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(ImportTextBox.Text))
@@ -40,7 +48,17 @@ public partial class QuickImportWindow : Window
             return;
         }
 
-        UpdatePreview();
+        var preview = UpdatePreview();
+        if (preview.ExistingDuplicates > 0 || preview.InputDuplicates > 0 || preview.Errors.Count > 0)
+        {
+            var result = MessageBox.Show(this,
+                BuildConfirmMessage(preview),
+                "确认导入",
+                MessageBoxButton.YesNo,
+                preview.Errors.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Question);
+            if (result != MessageBoxResult.Yes) return;
+        }
+
         DialogResult = true;
     }
 
@@ -58,20 +76,38 @@ public partial class QuickImportWindow : Window
         e.Handled = true;
     }
 
-    private void UpdatePreview()
+    private ImportPreviewResult UpdatePreview()
     {
-        var parsed = AccountImportExport.ParsePlainText(ImportTextBox.Text, DefaultCategory, DefaultTags);
-        PreviewText.Text = $"总 {parsed.TotalLines} · 可导入 {parsed.Accounts.Count} · 错误 {parsed.Errors.Count}";
+        var preview = AccountImportExport.PreviewPlainText(ImportTextBox.Text, DefaultCategory, DefaultTags, DuplicateMode, _existingEmails);
+        PreviewText.Text = $"总 {preview.TotalLines} · 解析 {preview.Parsed} · 新增 {preview.Inserted} · 覆盖 {preview.Updated} · 跳过 {preview.SkippedDuplicates} · 重复 {preview.ExistingDuplicates} · 文内重复 {preview.InputDuplicates} · 错误 {preview.Errors.Count}";
 
-        if (parsed.Errors.Count == 0)
+        if (preview.Errors.Count == 0 && preview.DuplicateSamples.Count == 0)
         {
             PreviewErrorsBox.Text = string.Empty;
-            return;
+            return preview;
         }
 
         var sb = new StringBuilder();
-        foreach (var error in parsed.Errors.Take(20)) sb.AppendLine(error);
-        if (parsed.Errors.Count > 20) sb.AppendLine($"……还有 {parsed.Errors.Count - 20} 条");
+        foreach (var duplicate in preview.DuplicateSamples.Take(12)) sb.AppendLine($"重复：{duplicate}");
+        if (preview.DuplicateSamples.Count > 12) sb.AppendLine($"……还有 {preview.DuplicateSamples.Count - 12} 个重复账号");
+        foreach (var error in preview.Errors.Take(20)) sb.AppendLine(error);
+        if (preview.Errors.Count > 20) sb.AppendLine($"……还有 {preview.Errors.Count - 20} 条错误");
         PreviewErrorsBox.Text = sb.ToString();
+        return preview;
+    }
+
+    private static string BuildConfirmMessage(ImportPreviewResult preview)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"解析：{preview.Parsed}");
+        sb.AppendLine($"新增：{preview.Inserted}");
+        sb.AppendLine($"覆盖：{preview.Updated}");
+        sb.AppendLine($"跳过重复：{preview.SkippedDuplicates}");
+        sb.AppendLine($"数据库重复：{preview.ExistingDuplicates}");
+        sb.AppendLine($"文本内重复：{preview.InputDuplicates}");
+        sb.AppendLine($"格式错误：{preview.Errors.Count}");
+        sb.AppendLine();
+        sb.AppendLine("继续导入？");
+        return sb.ToString();
     }
 }

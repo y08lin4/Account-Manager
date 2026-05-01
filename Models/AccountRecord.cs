@@ -33,3 +33,34 @@ public sealed class ImportResult
     public List<string> Errors { get; } = new();
 }
 
+public sealed class ImportPreviewResult
+{
+    public int TotalLines { get; set; }
+    public int Parsed { get; set; }
+    public int Inserted { get; set; }
+    public int Updated { get; set; }
+    public int SkippedDuplicates { get; set; }
+    public int ExistingDuplicates { get; set; }
+    public int InputDuplicates { get; set; }
+    public List<string> Errors { get; } = new();
+    public List<string> DuplicateSamples { get; } = new();
+}
+
+public sealed class DatabaseHealthResult
+{
+    public bool Ok { get; set; }
+    public string DatabasePath { get; set; } = string.Empty;
+    public bool DatabaseExists { get; set; }
+    public long DatabaseSizeBytes { get; set; }
+    public string QuickCheck { get; set; } = string.Empty;
+    public List<string> Tables { get; } = new();
+    public int SettingsCount { get; set; }
+    public int AccountCount { get; set; }
+    public int DecryptedAccountCount { get; set; }
+    public int CategoryCount { get; set; }
+    public int TagCount { get; set; }
+    public string LastAccountUpdate { get; set; } = string.Empty;
+    public bool SecurityConfigured { get; set; }
+    public string Error { get; set; } = string.Empty;
+}
+

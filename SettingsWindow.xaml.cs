@@ -3,6 +3,7 @@ using Microsoft.Win32;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace AccountManager;
 
@@ -11,20 +12,38 @@ public partial class SettingsWindow : Window
     private readonly AccountDatabase _database;
     private readonly SecurityService _security;
     private readonly LocalApiServer _apiServer;
+    private readonly Action? _settingsChanged;
+    private readonly Action? _showBackupHistory;
+    private readonly Action? _checkDatabase;
     private string _visibleToken = string.Empty;
+    private bool _loading;
 
-    public SettingsWindow(AccountDatabase database, SecurityService security, LocalApiServer apiServer, string initialTab = "security")
+    public SettingsWindow(
+        AccountDatabase database,
+        SecurityService security,
+        LocalApiServer apiServer,
+        string initialTab = "security",
+        Action? settingsChanged = null,
+        Action? showBackupHistory = null,
+        Action? checkDatabase = null)
     {
         InitializeComponent();
+        _loading = true;
         _database = database;
         _security = security;
         _apiServer = apiServer;
+        _settingsChanged = settingsChanged;
+        _showBackupHistory = showBackupHistory;
+        _checkDatabase = checkDatabase;
 
         ApiAddressBox.Text = _apiServer.BaseUrl;
         ApiTokenFileBox.Text = _apiServer.TokenFilePath;
+        ApiEnabledBox.IsChecked = IsApiEnabled();
+        SelectAutoLockMinutes(ReadAutoLockMinutes());
         RefreshApiTokenDisplay();
         RefreshBackupDirectoryDisplay();
         SelectInitialTab(initialTab);
+        _loading = false;
     }
 
     private void SelectInitialTab(string initialTab)
@@ -40,7 +59,10 @@ public partial class SettingsWindow : Window
     private void RefreshApiTokenDisplay()
     {
         var token = _apiServer.GetToken();
-        ApiStatusText.Text = _apiServer.IsRunning
+        ApiEnabledBox.IsChecked = IsApiEnabled();
+        ApiStatusText.Text = !IsApiEnabled()
+            ? "已关闭"
+            : _apiServer.IsRunning
             ? (string.IsNullOrWhiteSpace(token) ? "已启动，未创建 Token" : "已启动")
             : $"未启动{(string.IsNullOrWhiteSpace(_apiServer.LastError) ? string.Empty : "：" + _apiServer.LastError)}";
 
@@ -59,6 +81,60 @@ public partial class SettingsWindow : Window
     private string GetBackupDirectory()
     {
         return _database.GetSetting(AppSettingKeys.BackupDirectory) ?? string.Empty;
+    }
+
+    private bool IsApiEnabled()
+    {
+        return !string.Equals(_database.GetSetting(AppSettingKeys.ApiEnabled), "false", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private int ReadAutoLockMinutes()
+    {
+        return int.TryParse(_database.GetSetting(AppSettingKeys.AutoLockMinutes), out var minutes) && minutes > 0 ? minutes : 0;
+    }
+
+    private void SelectAutoLockMinutes(int minutes)
+    {
+        foreach (ComboBoxItem item in AutoLockBox.Items)
+        {
+            if (int.TryParse(item.Tag?.ToString(), out var value) && value == minutes)
+            {
+                AutoLockBox.SelectedItem = item;
+                return;
+            }
+        }
+
+        AutoLockBox.SelectedIndex = 0;
+    }
+
+    private void ApiEnabledBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+
+        var enabled = ApiEnabledBox.IsChecked == true;
+        _database.SetSettings(new Dictionary<string, string>
+        {
+            [AppSettingKeys.ApiEnabled] = enabled ? "true" : "false"
+        });
+
+        if (enabled) _apiServer.Start();
+        else _apiServer.Stop();
+
+        _visibleToken = string.Empty;
+        RefreshApiTokenDisplay();
+        _settingsChanged?.Invoke();
+    }
+
+    private void AutoLockBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || AutoLockBox.SelectedItem is not ComboBoxItem item) return;
+
+        var minutes = int.TryParse(item.Tag?.ToString(), out var value) ? value : 0;
+        _database.SetSettings(new Dictionary<string, string>
+        {
+            [AppSettingKeys.AutoLockMinutes] = minutes.ToString()
+        });
+        _settingsChanged?.Invoke();
     }
 
     private void ChangeSecurity_Click(object sender, RoutedEventArgs e)
@@ -174,6 +250,16 @@ public partial class SettingsWindow : Window
         }
 
         Process.Start(new ProcessStartInfo(directory) { UseShellExecute = true });
+    }
+
+    private void BackupHistory_Click(object sender, RoutedEventArgs e)
+    {
+        _showBackupHistory?.Invoke();
+    }
+
+    private void DatabaseCheck_Click(object sender, RoutedEventArgs e)
+    {
+        _checkDatabase?.Invoke();
     }
 
     private bool ConfirmPassword(string purpose)

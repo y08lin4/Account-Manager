@@ -223,6 +223,82 @@ public sealed class AccountDatabase
         command.ExecuteNonQuery();
     }
 
+    public DatabaseHealthResult CheckHealth()
+    {
+        EnsureProtector();
+        var result = new DatabaseHealthResult
+        {
+            DatabasePath = DatabasePath,
+            DatabaseExists = File.Exists(DatabasePath),
+            DatabaseSizeBytes = File.Exists(DatabasePath) ? new FileInfo(DatabasePath).Length : 0
+        };
+
+        try
+        {
+            using var connection = OpenConnection();
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "PRAGMA quick_check;";
+                result.QuickCheck = command.ExecuteScalar()?.ToString() ?? string.Empty;
+            }
+
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = """
+                SELECT name FROM sqlite_master
+                WHERE type = 'table' AND name IN ('app_settings', 'accounts')
+                ORDER BY name;
+                """;
+                using var reader = command.ExecuteReader();
+                while (reader.Read()) result.Tables.Add(reader.GetString(0));
+            }
+
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "SELECT COUNT(*) FROM app_settings;";
+                result.SettingsCount = Convert.ToInt32(command.ExecuteScalar());
+            }
+
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "SELECT COUNT(*) FROM accounts;";
+                result.AccountCount = Convert.ToInt32(command.ExecuteScalar());
+            }
+
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "SELECT MAX(updated_at) FROM accounts;";
+                result.LastAccountUpdate = command.ExecuteScalar()?.ToString() ?? string.Empty;
+            }
+
+            result.SecurityConfigured = GetSetting("security.version") == "1";
+
+            var accounts = GetAll();
+            result.DecryptedAccountCount = accounts.Count;
+            result.CategoryCount = accounts
+                .Where(a => !string.IsNullOrWhiteSpace(a.Category))
+                .Select(a => a.Category.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count();
+            result.TagCount = accounts
+                .SelectMany(a => SplitTags(a.Tags))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count();
+            result.Ok = string.Equals(result.QuickCheck, "ok", StringComparison.OrdinalIgnoreCase)
+                        && result.Tables.Contains("accounts")
+                        && result.Tables.Contains("app_settings")
+                        && result.DecryptedAccountCount == result.AccountCount
+                        && result.SecurityConfigured;
+        }
+        catch (Exception ex)
+        {
+            result.Ok = false;
+            result.Error = ex.Message;
+        }
+
+        return result;
+    }
+
     public ImportResult ImportAccounts(IEnumerable<AccountRecord> accounts, DuplicateMode duplicateMode)
     {
         EnsureProtector();

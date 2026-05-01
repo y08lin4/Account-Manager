@@ -29,6 +29,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly ObservableCollection<FilterItem> _tagFilters = new();
     private readonly DispatcherTimer _clipboardTimer;
     private readonly DispatcherTimer _totpTimer;
+    private readonly DispatcherTimer _autoLockTimer;
 
     private List<AccountRecord> _allAccounts = new();
     private long _editingId;
@@ -36,6 +37,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private bool _refreshingFilters;
     private bool _compactMode = true;
     private bool _syncingSelection;
+    private bool _isSoftLocked;
+    private DateTime _lastActivityAt = DateTime.Now;
+    private int _autoLockMinutes;
     private bool _editingEmail;
     private bool _showPassword;
     private bool _editingPassword;
@@ -81,9 +85,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _totpTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _totpTimer.Tick += (_, _) => RefreshTotpDisplay();
         _totpTimer.Start();
+        _autoLockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
+        _autoLockTimer.Tick += AutoLockTimer_Tick;
+        _autoLockTimer.Start();
+
+        PreviewMouseDown += (_, _) => MarkActivity();
+        PreviewKeyDown += (_, _) => MarkActivity();
 
         Loaded += (_, _) =>
         {
+            RefreshAutoLockSettings();
             LoadData();
             StartLocalApi();
             SearchBox.Focus();
@@ -157,6 +168,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void StartLocalApi()
     {
+        if (!IsApiEnabled())
+        {
+            _apiServer.Stop();
+            _apiStatus = "API已关闭";
+            ApplyFilters();
+            return;
+        }
+
         if (_apiServer.Start())
         {
             _apiStatus = $"API {_apiServer.BaseUrl}";
@@ -167,6 +186,37 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
 
         ApplyFilters();
+    }
+
+    private bool IsApiEnabled()
+    {
+        return !string.Equals(_database.GetSetting(AppSettingKeys.ApiEnabled), "false", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void RefreshRuntimeSettings()
+    {
+        RefreshAutoLockSettings();
+        StartLocalApi();
+    }
+
+    private void RefreshAutoLockSettings()
+    {
+        _autoLockMinutes = int.TryParse(_database.GetSetting(AppSettingKeys.AutoLockMinutes), out var minutes) && minutes > 0 ? minutes : 0;
+        MarkActivity();
+    }
+
+    private void MarkActivity()
+    {
+        if (!_isSoftLocked) _lastActivityAt = DateTime.Now;
+    }
+
+    private void AutoLockTimer_Tick(object? sender, EventArgs e)
+    {
+        if (_isSoftLocked || _autoLockMinutes <= 0 || !IsActive) return;
+        if (DateTime.Now - _lastActivityAt >= TimeSpan.FromMinutes(_autoLockMinutes))
+        {
+            SoftLock();
+        }
     }
 
     private void RequestDataRefresh()
@@ -566,7 +616,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void OpenImportWindow(string initialText, string sourceDescription = "")
     {
-        var window = new ImportTextWindow(initialText, sourceDescription: sourceDescription) { Owner = this };
+        var window = new ImportTextWindow(initialText, sourceDescription: sourceDescription, existingEmails: _allAccounts.Select(a => a.Email)) { Owner = this };
         if (window.ShowDialog() != true) return;
 
         ImportParsedText(window.ImportText, window.DefaultCategory, window.DefaultTags, window.DuplicateMode);
@@ -574,7 +624,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void OpenQuickImportWindow(string initialText)
     {
-        var window = new QuickImportWindow(initialText) { Owner = this };
+        var window = new QuickImportWindow(initialText, existingEmails: _allAccounts.Select(a => a.Email)) { Owner = this };
         if (window.ShowDialog() != true) return;
 
         ImportParsedText(window.ImportText, window.DefaultCategory, window.DefaultTags, window.DuplicateMode);
@@ -709,12 +759,17 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         if (dialog.ShowDialog(this) != true) return;
 
+        RestoreBackupFromPath(dialog.FileName);
+    }
+
+    private void RestoreBackupFromPath(string backupPath)
+    {
         if (MessageBox.Show(this, "将替换当前数据库并重启。继续？", "导入备份", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
 
         try
         {
             _apiServer.Stop();
-            _database.RestoreDatabaseFromBackup(dialog.FileName);
+            _database.RestoreDatabaseFromBackup(backupPath);
             MessageBox.Show(this, "已导入，程序将重启。", "导入备份", MessageBoxButton.OK, MessageBoxImage.Information);
             RestartApplication();
         }
@@ -726,23 +781,118 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void SecuritySettings_Click(object sender, RoutedEventArgs e)
     {
-        var window = new SettingsWindow(_database, _security, _apiServer, "security") { Owner = this };
+        var window = CreateSettingsWindow("security");
         window.ShowDialog();
-        ApplyFilters();
+        RefreshRuntimeSettings();
     }
 
     private void ApiInfo_Click(object sender, RoutedEventArgs e)
     {
-        var window = new SettingsWindow(_database, _security, _apiServer, "api") { Owner = this };
+        var window = CreateSettingsWindow("api");
         window.ShowDialog();
-        ApplyFilters();
+        RefreshRuntimeSettings();
+    }
+
+    private void BackupHistory_Click(object sender, RoutedEventArgs e)
+    {
+        ShowBackupHistory();
+    }
+
+    private void DatabaseCheck_Click(object sender, RoutedEventArgs e)
+    {
+        CheckDatabase();
+    }
+
+    private void ShowBackupHistory()
+    {
+        var backupDirectory = EnsureBackupDirectory();
+        if (string.IsNullOrWhiteSpace(backupDirectory)) return;
+
+        var window = new BackupHistoryWindow(backupDirectory) { Owner = this };
+        if (window.ShowDialog() == true && !string.IsNullOrWhiteSpace(window.RestoreBackupPath))
+        {
+            RestoreBackupFromPath(window.RestoreBackupPath);
+        }
+    }
+
+    private void CheckDatabase()
+    {
+        try
+        {
+            var health = _database.CheckHealth();
+            var backupDirectory = _database.GetSetting(AppSettingKeys.BackupDirectory) ?? string.Empty;
+            var backupCount = Directory.Exists(backupDirectory)
+                ? Directory.EnumerateFiles(backupDirectory, "AccountManager_Backup_*.db").Count()
+                : 0;
+
+            var message = new StringBuilder()
+                .AppendLine(health.Ok ? "数据库检查通过" : "数据库检查发现问题")
+                .AppendLine()
+                .AppendLine($"数据库：{health.DatabasePath}")
+                .AppendLine($"文件存在：{(health.DatabaseExists ? "是" : "否")}")
+                .AppendLine($"文件大小：{health.DatabaseSizeBytes:N0} 字节")
+                .AppendLine($"SQLite quick_check：{health.QuickCheck}")
+                .AppendLine($"表：{string.Join(", ", health.Tables)}")
+                .AppendLine($"安全配置：{(health.SecurityConfigured ? "正常" : "缺失")}")
+                .AppendLine($"设置数：{health.SettingsCount}")
+                .AppendLine($"账号数：{health.AccountCount}")
+                .AppendLine($"可解密账号数：{health.DecryptedAccountCount}")
+                .AppendLine($"分类数：{health.CategoryCount}")
+                .AppendLine($"标签数：{health.TagCount}")
+                .AppendLine($"最后更新：{health.LastAccountUpdate}")
+                .AppendLine($"备份目录：{(string.IsNullOrWhiteSpace(backupDirectory) ? "未设置" : backupDirectory)}")
+                .AppendLine($"备份数量：{backupCount}");
+
+            if (!string.IsNullOrWhiteSpace(health.Error))
+            {
+                message.AppendLine().AppendLine($"错误：{health.Error}");
+            }
+
+            MessageBox.Show(this, message.ToString(), "数据库检查", MessageBoxButton.OK, health.Ok ? MessageBoxImage.Information : MessageBoxImage.Warning);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "数据库检查失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private SettingsWindow CreateSettingsWindow(string tab)
+    {
+        return new SettingsWindow(
+            _database,
+            _security,
+            _apiServer,
+            tab,
+            RefreshRuntimeSettings,
+            ShowBackupHistory,
+            CheckDatabase)
+        { Owner = this };
     }
 
     private void Lock_Click(object sender, RoutedEventArgs e)
     {
-        _apiServer.Stop();
-        _security.Lock();
-        RestartApplication();
+        SoftLock();
+    }
+
+    private void SoftLock()
+    {
+        if (_isSoftLocked) return;
+        _isSoftLocked = true;
+        Hide();
+
+        var unlock = new UnlockWindow(_security);
+        var unlocked = unlock.ShowDialog() == true;
+        if (unlocked)
+        {
+            _isSoftLocked = false;
+            Show();
+            Activate();
+            MarkActivity();
+            SearchBox.Focus();
+            return;
+        }
+
+        System.Windows.Application.Current.Shutdown();
     }
 
     private void TogglePassword_Click(object sender, RoutedEventArgs e)

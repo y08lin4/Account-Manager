@@ -79,7 +79,10 @@
                     <Button.ContextMenu>
                         <ContextMenu>
                             <MenuItem Header="备份" Click="CreateBackup_Click"/>
+                            <MenuItem Header="备份历史" Click="BackupHistory_Click"/>
                             <MenuItem Header="恢复" Click="RestoreBackup_Click"/>
+                            <Separator/>
+                            <MenuItem Header="数据库检查" Click="DatabaseCheck_Click"/>
                             <Separator/>
                             <MenuItem Header="API" Click="ApiInfo_Click"/>
                             <MenuItem Header="设置" Click="SecuritySettings_Click"/>

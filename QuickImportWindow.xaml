@@ -25,7 +25,7 @@
             <TextBlock Grid.Column="2" Text="标签" VerticalAlignment="Center" Margin="12,0,6,0"/>
             <TextBox x:Name="TagsBox" Grid.Column="3" Height="26"/>
             <TextBlock Grid.Column="4" Text="重复" VerticalAlignment="Center" Margin="12,0,6,0"/>
-            <ComboBox x:Name="DuplicateBox" Grid.Column="5" SelectedIndex="0" Height="26">
+            <ComboBox x:Name="DuplicateBox" Grid.Column="5" SelectedIndex="0" Height="26" SelectionChanged="DuplicateBox_SelectionChanged">
                 <ComboBoxItem Content="跳过"/>
                 <ComboBoxItem Content="覆盖"/>
                 <ComboBoxItem Content="保留"/>

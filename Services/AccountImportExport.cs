@@ -32,6 +32,64 @@ public static class AccountImportExport
         return (accounts, errors, lines.Length);
     }
 
+    public static ImportPreviewResult PreviewPlainText(
+        string text,
+        string defaultCategory,
+        string defaultTags,
+        DuplicateMode duplicateMode,
+        IEnumerable<string> existingEmails)
+    {
+        var parsed = ParsePlainText(text, defaultCategory, defaultTags);
+        var result = new ImportPreviewResult
+        {
+            TotalLines = parsed.TotalLines,
+            Parsed = parsed.Accounts.Count
+        };
+        result.Errors.AddRange(parsed.Errors);
+
+        var initialExisting = new HashSet<string>(existingEmails.Select(AccountDatabase.Normalize), StringComparer.OrdinalIgnoreCase);
+        var known = new HashSet<string>(initialExisting, StringComparer.OrdinalIgnoreCase);
+        var inputSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var duplicateSamples = new List<string>();
+
+        foreach (var account in parsed.Accounts)
+        {
+            var normalized = AccountDatabase.Normalize(account.Email);
+            var existsBeforeThisLine = known.Contains(normalized);
+            if (initialExisting.Contains(normalized)) result.ExistingDuplicates++;
+            if (!inputSeen.Add(normalized)) result.InputDuplicates++;
+
+            if ((existsBeforeThisLine || initialExisting.Contains(normalized)) && duplicateSamples.Count < 20)
+            {
+                duplicateSamples.Add(account.Email);
+            }
+
+            if (existsBeforeThisLine)
+            {
+                switch (duplicateMode)
+                {
+                    case DuplicateMode.Skip:
+                        result.SkippedDuplicates++;
+                        break;
+                    case DuplicateMode.Overwrite:
+                        result.Updated++;
+                        break;
+                    case DuplicateMode.KeepBoth:
+                        result.Inserted++;
+                        break;
+                }
+            }
+            else
+            {
+                result.Inserted++;
+                known.Add(normalized);
+            }
+        }
+
+        result.DuplicateSamples.AddRange(duplicateSamples.Distinct(StringComparer.OrdinalIgnoreCase));
+        return result;
+    }
+
     private static AccountRecord? ParseLine(string line, string defaultCategory, string defaultTags, out string error)
     {
         error = string.Empty;
