@@ -15,12 +15,20 @@ AccountManager 启动并解锁后，会在本机开启一个轻量 HTTP API，�
 
 除健康检查外，其它接口都需要 Token。
 
+Token 需要在软件内创建：
+
+```text
+更多 → API → 新建
+```
+
+查看、复制、新建、删除 Token 都需要输入主密码确认。
+
 Token 文件位置：
 
 - 绿色版：`软件目录\data\api-token.txt`
 - 安装版：`%APPDATA%\AccountManager\api-token.txt`
 
-请求头二选一：
+创建 Token 后，请求头二选一：
 
 ```http
 Authorization: Bearer am_xxx
@@ -39,6 +47,8 @@ $token = (Get-Content ".\data\api-token.txt" -Raw).Trim()
 $headers = @{ Authorization = "Bearer $token" }
 Invoke-RestMethod "http://127.0.0.1:17878/api/v1/accounts" -Headers $headers
 ```
+
+删除 Token 后，除健康检查外的接口都会返回未授权；重新新建 Token 后恢复可用。
 
 ## 响应格式
 

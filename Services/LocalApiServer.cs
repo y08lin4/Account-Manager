@@ -13,7 +13,7 @@ public sealed class LocalApiServer : IDisposable
 {
     private const int MaxHeaderBytes = 64 * 1024;
     private const int MaxBodyBytes = 20 * 1024 * 1024;
-    private const string ApiTokenSettingKey = "api.token";
+    public const string ApiTokenSettingKey = "api.token";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -43,6 +43,39 @@ public sealed class LocalApiServer : IDisposable
     public bool IsRunning { get; private set; }
     public string LastError { get; private set; } = string.Empty;
     public string TokenFilePath => AppPaths.ApiTokenPath;
+    public bool HasToken => !string.IsNullOrWhiteSpace(GetToken());
+
+    public string GetToken()
+    {
+        return _database.GetSetting(ApiTokenSettingKey) ?? string.Empty;
+    }
+
+    public string RegenerateToken()
+    {
+        var token = "am_" + Base64Url(RandomNumberGenerator.GetBytes(32));
+        _database.SetSettings(new Dictionary<string, string>
+        {
+            [ApiTokenSettingKey] = token
+        });
+
+        _apiToken = token;
+        WriteTokenFile(token);
+        return token;
+    }
+
+    public void DeleteToken()
+    {
+        _database.DeleteSetting(ApiTokenSettingKey);
+        _apiToken = string.Empty;
+
+        try
+        {
+            if (File.Exists(AppPaths.ApiTokenPath)) File.Delete(AppPaths.ApiTokenPath);
+        }
+        catch
+        {
+        }
+    }
 
     public bool Start()
     {
@@ -50,7 +83,7 @@ public sealed class LocalApiServer : IDisposable
 
         try
         {
-            _apiToken = EnsureApiToken();
+            _apiToken = LoadApiToken();
             _cts = new CancellationTokenSource();
             _listener = new TcpListener(IPAddress.Loopback, Port);
             _listener.Start(64);
@@ -351,28 +384,31 @@ public sealed class LocalApiServer : IDisposable
         });
     }
 
-    private string EnsureApiToken()
+    private string LoadApiToken()
     {
         Directory.CreateDirectory(AppPaths.DataDirectory);
         var token = _database.GetSetting(ApiTokenSettingKey);
 
         if (string.IsNullOrWhiteSpace(token) || !token.StartsWith("am_", StringComparison.Ordinal))
         {
-            token = "am_" + Base64Url(RandomNumberGenerator.GetBytes(32));
-            _database.SetSettings(new Dictionary<string, string>
-            {
-                [ApiTokenSettingKey] = token
-            });
+            DeleteToken();
+            return string.Empty;
         }
 
-        File.WriteAllText(AppPaths.ApiTokenPath, token + Environment.NewLine, new UTF8Encoding(false));
+        WriteTokenFile(token);
         return token;
+    }
+
+    private static void WriteTokenFile(string token)
+    {
+        Directory.CreateDirectory(AppPaths.DataDirectory);
+        File.WriteAllText(AppPaths.ApiTokenPath, token + Environment.NewLine, new UTF8Encoding(false));
     }
 
     private bool IsAuthorized(ApiRequest request)
     {
         var provided = ExtractToken(request);
-        if (string.IsNullOrWhiteSpace(provided)) return false;
+        if (string.IsNullOrWhiteSpace(provided) || string.IsNullOrWhiteSpace(_apiToken)) return false;
 
         var providedBytes = Encoding.UTF8.GetBytes(provided);
         var expectedBytes = Encoding.UTF8.GetBytes(_apiToken);

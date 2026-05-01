@@ -513,18 +513,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void CreateBackup_Click(object sender, RoutedEventArgs e)
     {
-        Directory.CreateDirectory(AppPaths.SuggestedBackupDirectory);
-        var dialog = new OpenFolderDialog
-        {
-            Title = "备份位置",
-            InitialDirectory = AppPaths.SuggestedBackupDirectory
-        };
+        var backupDirectory = EnsureBackupDirectory();
+        if (string.IsNullOrWhiteSpace(backupDirectory)) return;
 
-        if (dialog.ShowDialog(this) != true) return;
-
-        var backupPath = Path.Combine(dialog.FolderName, AccountImportExport.CreateBackupFileName());
+        var backupPath = Path.Combine(backupDirectory, AccountImportExport.CreateBackupFileName());
         try
         {
+            Directory.CreateDirectory(backupDirectory);
             _database.CreateDatabaseBackup(backupPath);
             MessageBox.Show(this, backupPath, "备份完成", MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -532,6 +527,27 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             MessageBox.Show(this, ex.Message, "备份失败", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private string? EnsureBackupDirectory()
+    {
+        var configured = _database.GetSetting(AppSettingKeys.BackupDirectory);
+        if (!string.IsNullOrWhiteSpace(configured)) return configured;
+
+        Directory.CreateDirectory(AppPaths.SuggestedBackupDirectory);
+        var dialog = new OpenFolderDialog
+        {
+            Title = "选择默认备份目录",
+            InitialDirectory = AppPaths.SuggestedBackupDirectory
+        };
+
+        if (dialog.ShowDialog(this) != true) return null;
+
+        _database.SetSettings(new Dictionary<string, string>
+        {
+            [AppSettingKeys.BackupDirectory] = dialog.FolderName
+        });
+        return dialog.FolderName;
     }
 
     private void RestoreBackup_Click(object sender, RoutedEventArgs e)
@@ -561,44 +577,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void SecuritySettings_Click(object sender, RoutedEventArgs e)
     {
-        var window = new SecuritySetupWindow(true, _security.PasswordHint, _security.RecoveryQuestion) { Owner = this };
-        if (window.ShowDialog() != true) return;
-
-        try
-        {
-            _security.ChangeSecurity(window.MasterPassword, window.PasswordHint, window.RecoveryQuestion, window.RecoveryAnswer);
-            StatusText.Text = "安全设置已更新";
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(this, ex.Message, "更新失败", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
+        var window = new SettingsWindow(_database, _security, _apiServer, "security") { Owner = this };
+        window.ShowDialog();
+        ApplyFilters();
     }
 
     private void ApiInfo_Click(object sender, RoutedEventArgs e)
     {
-        var status = _apiServer.IsRunning
-            ? "已启动"
-            : $"未启动{(string.IsNullOrWhiteSpace(_apiServer.LastError) ? string.Empty : "：" + _apiServer.LastError)}";
-
-        var text = new StringBuilder()
-            .AppendLine("本地 API")
-            .AppendLine()
-            .AppendLine($"状态：{status}")
-            .AppendLine($"地址：{_apiServer.BaseUrl}")
-            .AppendLine($"Token：{_apiServer.TokenFilePath}")
-            .AppendLine()
-            .AppendLine("请求头：Authorization: Bearer <token>")
-            .AppendLine()
-            .AppendLine("常用接口：")
-            .AppendLine("GET  /api/v1/accounts")
-            .AppendLine("POST /api/v1/accounts")
-            .AppendLine("POST /api/v1/import")
-            .AppendLine()
-            .AppendLine("完整说明见 API.md")
-            .ToString();
-
-        MessageBox.Show(this, text, "API", MessageBoxButton.OK, MessageBoxImage.Information);
+        var window = new SettingsWindow(_database, _security, _apiServer, "api") { Owner = this };
+        window.ShowDialog();
+        ApplyFilters();
     }
 
     private void Lock_Click(object sender, RoutedEventArgs e)

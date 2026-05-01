@@ -101,6 +101,15 @@ public sealed class AccountDatabase
         transaction.Commit();
     }
 
+    public void DeleteSetting(string key)
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM app_settings WHERE key = $key;";
+        command.Parameters.AddWithValue("$key", key);
+        command.ExecuteNonQuery();
+    }
+
     public List<AccountRecord> GetAll()
     {
         EnsureProtector();
