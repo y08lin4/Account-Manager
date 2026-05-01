@@ -8,18 +8,30 @@ using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace AccountManager;
 
 public partial class MainWindow : Window, INotifyPropertyChanged
 {
+    private const int ClipboardClearSeconds = 30;
+
     private readonly AccountDatabase _database;
     private readonly SecurityService _security;
     private readonly ObservableCollection<AccountRecord> _visibleAccounts = new();
+    private readonly ObservableCollection<FilterItem> _categoryFilters = new();
+    private readonly ObservableCollection<FilterItem> _tagFilters = new();
+    private readonly DispatcherTimer _clipboardTimer;
+
     private List<AccountRecord> _allAccounts = new();
     private long _editingId;
     private string _searchText = string.Empty;
     private bool _refreshingFilters;
+    private bool _showSecrets;
+    private string? _lastCopiedText;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -42,7 +54,17 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         DataContext = this;
         Title = $"AccountManager - {AppPaths.BuildMode}";
         AccountsGrid.ItemsSource = _visibleAccounts;
-        Loaded += (_, _) => LoadData();
+        CategoryListBox.ItemsSource = _categoryFilters;
+        TagListBox.ItemsSource = _tagFilters;
+
+        _clipboardTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(ClipboardClearSeconds) };
+        _clipboardTimer.Tick += ClipboardTimer_Tick;
+
+        Loaded += (_, _) =>
+        {
+            LoadData();
+            SearchBox.Focus();
+        };
     }
 
     private void LoadData()
@@ -63,18 +85,32 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void RefreshFilters()
     {
         _refreshingFilters = true;
-        var currentCategory = CategoryFilterBox.SelectedItem as string;
-        var currentTag = TagFilterBox.SelectedItem as string;
+        var currentCategory = (CategoryListBox.SelectedItem as FilterItem)?.Name ?? string.Empty;
+        var currentTag = (TagListBox.SelectedItem as FilterItem)?.Name ?? string.Empty;
 
-        CategoryFilterBox.Items.Clear();
-        CategoryFilterBox.Items.Add("全部分类");
-        foreach (var category in _database.GetCategories()) CategoryFilterBox.Items.Add(category);
-        CategoryFilterBox.SelectedItem = CategoryFilterBox.Items.Contains(currentCategory) ? currentCategory : "全部分类";
+        _categoryFilters.Clear();
+        _categoryFilters.Add(new FilterItem("", "全部", _allAccounts.Count));
+        foreach (var item in _allAccounts
+                     .Where(a => !string.IsNullOrWhiteSpace(a.Category))
+                     .GroupBy(a => a.Category.Trim(), StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            _categoryFilters.Add(new FilterItem(item.Key, item.Key, item.Count()));
+        }
+        CategoryListBox.SelectedItem = _categoryFilters.FirstOrDefault(i => string.Equals(i.Name, currentCategory, StringComparison.OrdinalIgnoreCase))
+                                       ?? _categoryFilters.FirstOrDefault();
 
-        TagFilterBox.Items.Clear();
-        TagFilterBox.Items.Add("全部标签");
-        foreach (var tag in _database.GetTags()) TagFilterBox.Items.Add(tag);
-        TagFilterBox.SelectedItem = TagFilterBox.Items.Contains(currentTag) ? currentTag : "全部标签";
+        _tagFilters.Clear();
+        _tagFilters.Add(new FilterItem("", "全部", _allAccounts.Count));
+        foreach (var item in _allAccounts
+                     .SelectMany(a => AccountDatabase.SplitTags(a.Tags))
+                     .GroupBy(t => t, StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            _tagFilters.Add(new FilterItem(item.Key, item.Key, item.Count()));
+        }
+        TagListBox.SelectedItem = _tagFilters.FirstOrDefault(i => string.Equals(i.Name, currentTag, StringComparison.OrdinalIgnoreCase))
+                                  ?? _tagFilters.FirstOrDefault();
 
         _refreshingFilters = false;
     }
@@ -82,20 +118,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void ApplyFilters()
     {
         if (_refreshingFilters) return;
-        var category = GetSelectedFilter(CategoryFilterBox, "全部分类");
-        var tag = GetSelectedFilter(TagFilterBox, "全部标签");
+        var category = (CategoryListBox.SelectedItem as FilterItem)?.Name ?? string.Empty;
+        var tag = (TagListBox.SelectedItem as FilterItem)?.Name ?? string.Empty;
         var filtered = AccountSearch.Filter(_allAccounts, SearchText, category, tag);
 
         _visibleAccounts.Clear();
         foreach (var account in filtered) _visibleAccounts.Add(account);
 
-        StatusText.Text = $"共 {_allAccounts.Count} 个账号，当前显示 {_visibleAccounts.Count} 个 · {AppPaths.BuildMode} · 数据目录：{AppPaths.DataDirectory}";
-    }
-
-    private static string GetSelectedFilter(System.Windows.Controls.ComboBox comboBox, string allText)
-    {
-        var value = comboBox.SelectedItem as string;
-        return string.IsNullOrWhiteSpace(value) || value == allText ? string.Empty : value;
+        EmptyHintText.Visibility = _visibleAccounts.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        StatusText.Text = $"{_visibleAccounts.Count}/{_allAccounts.Count} · {AppPaths.BuildMode} · {AppPaths.DataDirectory}";
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -104,7 +135,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         ApplyFilters();
     }
 
-    private void FilterBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void SidebarFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         ApplyFilters();
     }
@@ -114,11 +145,35 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (AccountsGrid.SelectedItem is not AccountRecord account) return;
         _editingId = account.Id;
         EmailBox.Text = account.Email;
-        PasswordBox.Text = account.Password;
-        TwoFaBox.Text = account.TwoFa;
+        SetSecrets(account.Password, account.TwoFa);
         CategoryBox.Text = account.Category;
         TagsBox.Text = account.Tags;
         RemarkBox.Text = account.Remark;
+    }
+
+    private void AccountsGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (GetSelectedAccount() is not null) CopySelectedLine_Click(sender, e);
+    }
+
+    private void AccountsGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var row = FindVisualParent<DataGridRow>((DependencyObject)e.OriginalSource);
+        if (row is not null)
+        {
+            row.IsSelected = true;
+            row.Focus();
+        }
+    }
+
+    private static T? FindVisualParent<T>(DependencyObject source) where T : DependencyObject
+    {
+        while (source is not null)
+        {
+            if (source is T target) return target;
+            source = VisualTreeHelper.GetParent(source);
+        }
+        return null;
     }
 
     private void New_Click(object sender, RoutedEventArgs e)
@@ -130,8 +185,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         _editingId = 0;
         EmailBox.Clear();
-        PasswordBox.Clear();
-        TwoFaBox.Clear();
+        SetSecrets(string.Empty, string.Empty);
         CategoryBox.Clear();
         TagsBox.Clear();
         RemarkBox.Clear();
@@ -142,13 +196,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void Save_Click(object sender, RoutedEventArgs e)
     {
         var email = EmailBox.Text.Trim();
+        var password = GetPasswordText();
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
         {
             MessageBox.Show(this, "请输入有效邮箱。", "校验失败", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        if (string.IsNullOrEmpty(PasswordBox.Text))
+        if (string.IsNullOrEmpty(password))
         {
             MessageBox.Show(this, "密码不能为空。", "校验失败", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
@@ -158,8 +213,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             Id = _editingId,
             Email = email,
-            Password = PasswordBox.Text,
-            TwoFa = TwoFaBox.Text,
+            Password = password,
+            TwoFa = GetTwoFaText(),
             Category = CategoryBox.Text,
             Tags = TagsBox.Text,
             Remark = RemarkBox.Text
@@ -167,17 +222,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         try
         {
-            if (_editingId == 0)
-            {
-                _database.Insert(account);
-            }
-            else
-            {
-                _database.Update(account);
-            }
+            if (_editingId == 0) _database.Insert(account);
+            else _database.Update(account);
 
             LoadData();
-            MessageBox.Show(this, "已保存。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            StatusText.Text = "已保存";
         }
         catch (Exception ex)
         {
@@ -187,17 +236,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
-        if (_editingId == 0)
+        var selectedId = GetSelectedAccount()?.Id ?? _editingId;
+        if (selectedId == 0)
         {
-            MessageBox.Show(this, "请先选择要删除的账号。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "请先选择账号。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
-        if (MessageBox.Show(this, "确定删除当前账号吗？", "确认删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (MessageBox.Show(this, "确定删除？", "删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
 
         try
         {
-            _database.Delete(_editingId);
+            _database.Delete(selectedId);
             LoadData();
         }
         catch (Exception ex)
@@ -210,32 +260,107 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         var dialog = new OpenFileDialog
         {
-            Title = "选择账号 TXT 文件",
-            Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*"
+            Title = "选择 TXT",
+            Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*",
+            Multiselect = true
         };
 
-        if (dialog.ShowDialog(this) == true)
-        {
-            var text = File.ReadAllText(dialog.FileName, Encoding.UTF8);
-            OpenImportWindow(text);
-        }
+        if (dialog.ShowDialog(this) == true) OpenImportFiles(dialog.FileNames);
     }
 
     private void PasteImport_Click(object sender, RoutedEventArgs e)
     {
         var text = Clipboard.ContainsText() ? Clipboard.GetText() : string.Empty;
-        OpenImportWindow(text);
+        OpenImportWindow(text, "剪贴板");
     }
 
-    private void OpenImportWindow(string initialText)
+    private void MainWindow_DragOver(object sender, DragEventArgs e)
     {
-        var window = new ImportTextWindow(initialText) { Owner = this };
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) || e.Data.GetDataPresent(DataFormats.Text)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void MainWindow_Drop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            var files = ((string[]?)e.Data.GetData(DataFormats.FileDrop) ?? Array.Empty<string>())
+                .Where(File.Exists)
+                .ToArray();
+
+            if (files.Length > 0)
+            {
+                OpenImportFiles(files);
+                e.Handled = true;
+                return;
+            }
+        }
+
+        if (e.Data.GetDataPresent(DataFormats.Text))
+        {
+            OpenImportWindow(e.Data.GetData(DataFormats.Text) as string ?? string.Empty, "拖拽文本");
+            e.Handled = true;
+        }
+    }
+
+    private void OpenImportFiles(IReadOnlyCollection<string> fileNames)
+    {
+        var (text, errors) = ReadImportFiles(fileNames);
+        if (errors.Count > 0)
+        {
+            MessageBox.Show(this,
+                string.Join("\n", errors.Take(10)) + (errors.Count > 10 ? $"\n……还有 {errors.Count - 10} 个" : string.Empty),
+                "导入提示",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            MessageBox.Show(this, "没有内容。", "导入", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        OpenImportWindow(text, $"{fileNames.Count} 个文件");
+    }
+
+    private static (string Text, List<string> Errors) ReadImportFiles(IEnumerable<string> fileNames)
+    {
+        var text = new StringBuilder();
+        var errors = new List<string>();
+
+        foreach (var fileName in fileNames.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            try
+            {
+                if (!File.Exists(fileName))
+                {
+                    errors.Add($"{fileName}：文件不存在");
+                    continue;
+                }
+
+                text.AppendLine(File.ReadAllText(fileName, Encoding.UTF8));
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"{Path.GetFileName(fileName)}：{ex.Message}");
+            }
+        }
+
+        return (text.ToString(), errors);
+    }
+
+    private void OpenImportWindow(string initialText, string sourceDescription = "")
+    {
+        var window = new ImportTextWindow(initialText, sourceDescription: sourceDescription) { Owner = this };
         if (window.ShowDialog() != true) return;
 
         var parsed = AccountImportExport.ParsePlainText(window.ImportText, window.DefaultCategory, window.DefaultTags);
         if (parsed.Accounts.Count == 0)
         {
-            MessageBox.Show(this, BuildImportErrorMessage(parsed.TotalLines, 0, 0, 0, 0, parsed.Errors), "没有可导入账号", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, BuildImportResultMessage(parsed.TotalLines, 0, 0, 0, 0, parsed.Errors), "导入", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -246,7 +371,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             result.Errors.AddRange(parsed.Errors);
             LoadData();
             MessageBox.Show(this,
-                BuildImportErrorMessage(result.TotalLines, result.Parsed, result.Inserted, result.Updated, result.SkippedDuplicates, result.Errors),
+                BuildImportResultMessage(result.TotalLines, result.Parsed, result.Inserted, result.Updated, result.SkippedDuplicates, result.Errors),
                 "导入完成",
                 MessageBoxButton.OK,
                 result.Errors.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
@@ -257,20 +382,19 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private static string BuildImportErrorMessage(int total, int parsed, int inserted, int updated, int skipped, IReadOnlyList<string> errors)
+    private static string BuildImportResultMessage(int total, int parsed, int inserted, int updated, int skipped, IReadOnlyList<string> errors)
     {
         var sb = new StringBuilder();
         sb.AppendLine($"总行数：{total}");
         sb.AppendLine($"成功解析：{parsed}");
         sb.AppendLine($"新增：{inserted}");
-        sb.AppendLine($"覆盖更新：{updated}");
-        sb.AppendLine($"跳过重复：{skipped}");
-        sb.AppendLine($"格式错误：{errors.Count}");
+        sb.AppendLine($"覆盖：{updated}");
+        sb.AppendLine($"跳过：{skipped}");
+        sb.AppendLine($"错误：{errors.Count}");
 
         if (errors.Count > 0)
         {
             sb.AppendLine();
-            sb.AppendLine("前几条错误：");
             foreach (var error in errors.Take(8)) sb.AppendLine(error);
             if (errors.Count > 8) sb.AppendLine($"……还有 {errors.Count - 8} 条");
         }
@@ -303,7 +427,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         try
         {
             writer(dialog.FileName);
-            MessageBox.Show(this, $"已导出：{dialog.FileName}", "导出完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, dialog.FileName, "导出完成", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
@@ -316,7 +440,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         Directory.CreateDirectory(AppPaths.SuggestedBackupDirectory);
         var dialog = new OpenFolderDialog
         {
-            Title = "选择备份保存位置",
+            Title = "备份位置",
             InitialDirectory = AppPaths.SuggestedBackupDirectory
         };
 
@@ -326,7 +450,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         try
         {
             _database.CreateDatabaseBackup(backupPath);
-            MessageBox.Show(this, $"备份已创建：\n{backupPath}", "备份完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, backupPath, "备份完成", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
@@ -338,23 +462,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         var dialog = new OpenFileDialog
         {
-            Title = "选择 AccountManager 备份文件",
+            Title = "选择备份",
             Filter = "AccountManager backup (*.db;*.ambak)|*.db;*.ambak|All files (*.*)|*.*"
         };
 
         if (dialog.ShowDialog(this) != true) return;
 
-        var confirm = MessageBox.Show(this,
-            "导入备份会替换当前数据库。程序会先在数据目录生成一份恢复前安全副本，然后重启。\n\n恢复后需要输入该备份对应的主密码。确定继续吗？",
-            "确认导入备份",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
-        if (confirm != MessageBoxResult.Yes) return;
+        if (MessageBox.Show(this, "将替换当前数据库并重启。继续？", "导入备份", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
 
         try
         {
             _database.RestoreDatabaseFromBackup(dialog.FileName);
-            MessageBox.Show(this, "备份已导入。程序将重启，请输入该备份对应的主密码。", "恢复完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "已导入，程序将重启。", "导入备份", MessageBoxButton.OK, MessageBoxImage.Information);
             RestartApplication();
         }
         catch (Exception ex)
@@ -371,7 +490,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         try
         {
             _security.ChangeSecurity(window.MasterPassword, window.PasswordHint, window.RecoveryQuestion, window.RecoveryAnswer);
-            MessageBox.Show(this, "安全设置已更新。下次解锁使用新主密码。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            StatusText.Text = "安全设置已更新";
         }
         catch (Exception ex)
         {
@@ -385,20 +504,96 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         RestartApplication();
     }
 
-    private void CopyEmail_Click(object sender, RoutedEventArgs e) => CopyText(EmailBox.Text, "邮箱已复制。 ");
-    private void CopyPassword_Click(object sender, RoutedEventArgs e) => CopyText(PasswordBox.Text, "密码已复制。 ");
-    private void CopyTwoFa_Click(object sender, RoutedEventArgs e) => CopyText(TwoFaBox.Text, "2FA 已复制。 ");
+    private void ToggleSecrets_Click(object sender, RoutedEventArgs e)
+    {
+        var password = GetPasswordText();
+        var twoFa = GetTwoFaText();
+        _showSecrets = !_showSecrets;
+        SetSecrets(password, twoFa);
+    }
+
+    private void SetSecrets(string password, string twoFa)
+    {
+        PasswordHiddenBox.Password = password;
+        PasswordTextBox.Text = password;
+        TwoFaHiddenBox.Password = twoFa;
+        TwoFaTextBox.Text = twoFa;
+        UpdateSecretVisibility();
+    }
+
+    private void UpdateSecretVisibility()
+    {
+        PasswordHiddenBox.Visibility = _showSecrets ? Visibility.Collapsed : Visibility.Visible;
+        PasswordTextBox.Visibility = _showSecrets ? Visibility.Visible : Visibility.Collapsed;
+        TwoFaHiddenBox.Visibility = _showSecrets ? Visibility.Collapsed : Visibility.Visible;
+        TwoFaTextBox.Visibility = _showSecrets ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private string GetPasswordText() => _showSecrets ? PasswordTextBox.Text : PasswordHiddenBox.Password;
+    private string GetTwoFaText() => _showSecrets ? TwoFaTextBox.Text : TwoFaHiddenBox.Password;
+
+    private AccountRecord? GetSelectedAccount() => AccountsGrid.SelectedItem as AccountRecord;
+
+    private void CopyEmail_Click(object sender, RoutedEventArgs e) => CopyText(EmailBox.Text, "邮箱已复制");
+    private void CopyPassword_Click(object sender, RoutedEventArgs e) => CopyText(GetPasswordText(), "密码已复制");
+    private void CopyTwoFa_Click(object sender, RoutedEventArgs e) => CopyText(GetTwoFaText(), "2FA 已复制");
 
     private void CopyLine_Click(object sender, RoutedEventArgs e)
     {
-        CopyText($"{EmailBox.Text}--{PasswordBox.Text}--{TwoFaBox.Text}", "整行已复制。 ");
+        CopyText($"{EmailBox.Text}--{GetPasswordText()}--{GetTwoFaText()}", "整行已复制");
+    }
+
+    private void CopySelectedEmail_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetSelectedAccount() is { } account) CopyText(account.Email, "邮箱已复制");
+    }
+
+    private void CopySelectedPassword_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetSelectedAccount() is { } account) CopyText(account.Password, "密码已复制");
+    }
+
+    private void CopySelectedTwoFa_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetSelectedAccount() is { } account) CopyText(account.TwoFa, "2FA 已复制");
+    }
+
+    private void CopySelectedLine_Click(object sender, RoutedEventArgs e)
+    {
+        if (GetSelectedAccount() is { } account) CopyText($"{account.Email}--{account.Password}--{account.TwoFa}", "整行已复制");
     }
 
     private void CopyText(string text, string status)
     {
         if (string.IsNullOrEmpty(text)) return;
         Clipboard.SetText(text);
-        StatusText.Text = status;
+        _lastCopiedText = text;
+        _clipboardTimer.Stop();
+        _clipboardTimer.Start();
+        StatusText.Text = $"{status} · {ClipboardClearSeconds}s 后清空剪贴板";
+    }
+
+    private void ClipboardTimer_Tick(object? sender, EventArgs e)
+    {
+        _clipboardTimer.Stop();
+        if (string.IsNullOrEmpty(_lastCopiedText)) return;
+
+        try
+        {
+            if (Clipboard.ContainsText() && Clipboard.GetText() == _lastCopiedText)
+            {
+                Clipboard.Clear();
+                StatusText.Text = "剪贴板已清空";
+            }
+        }
+        catch
+        {
+            // Clipboard can be temporarily locked by other processes.
+        }
+        finally
+        {
+            _lastCopiedText = null;
+        }
     }
 
     private static void RestartApplication()
@@ -407,6 +602,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (!string.IsNullOrWhiteSpace(exe)) Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true });
         System.Windows.Application.Current.Shutdown();
     }
+
+    private sealed class FilterItem
+    {
+        public string Name { get; }
+        public string DisplayName { get; }
+
+        public FilterItem(string name, string label, int count)
+        {
+            Name = name;
+            DisplayName = $"{label}  {count}";
+        }
+    }
 }
-
-

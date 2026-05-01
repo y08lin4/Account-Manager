@@ -1,0 +1,99 @@
+﻿name: 打包 AccountManager
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+  release:
+    types: [ published ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: 构建 Windows 程序
+    runs-on: windows-latest
+
+    steps:
+      - name: 拉取源码
+        uses: actions/checkout@v4
+
+      - name: 安装 .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: 还原依赖
+        run: dotnet restore AccountManager.sln
+
+      - name: 构建检查
+        run: dotnet build AccountManager.sln -c Release --no-restore
+
+      - name: 发布绿色便携版
+        shell: pwsh
+        run: |
+          dotnet publish .\AccountManager.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:DebugType=None `
+            -p:DebugSymbols=false `
+            -p:DefineConstants=PORTABLE `
+            -o .\dist\portable
+          Compress-Archive -Path .\dist\portable\AccountManager.exe -DestinationPath .\dist\AccountManager_Portable.zip -Force
+
+      - name: 发布安装版程序文件
+        shell: pwsh
+        run: |
+          dotnet publish .\AccountManager.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:DebugType=None `
+            -p:DebugSymbols=false `
+            -p:DefineConstants=INSTALLED `
+            -o .\dist\installed\app
+          Compress-Archive -Path .\dist\installed\app\AccountManager.exe -DestinationPath .\dist\AccountManager_Installed_App.zip -Force
+
+      - name: 安装 Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: 生成安装包
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" .\installer\AccountManager.iss
+
+      - name: 上传绿色便携版产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: AccountManager_Portable
+          path: dist/AccountManager_Portable.zip
+
+      - name: 上传安装版程序产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: AccountManager_Installed_App
+          path: dist/AccountManager_Installed_App.zip
+
+      - name: 上传安装包产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: AccountManager_Setup
+          path: dist/installed/AccountManager_Setup.exe
+
+      - name: 发布到 GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/AccountManager_Portable.zip
+            dist/AccountManager_Installed_App.zip
+            dist/installed/AccountManager_Setup.exe

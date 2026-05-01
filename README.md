@@ -9,9 +9,13 @@ Windows 本地账号管理器，使用 C# WPF + SQLite。
 - 忘记主密码时可通过保护问题重置主密码
 - 账号字段：邮箱、密码、2FA、分类、标签、备注
 - TXT / 粘贴批量导入：`邮箱--密码--2FA`
+- 支持选择多个 TXT、拖拽多个 TXT 到主窗口、导入前预览
 - 搜索大小写不敏感
 - 双向部分匹配：数据库邮箱 `bqmlutxsw20435@outlook.jp` 可以被 `codex-bqmlutxsw20435@outlook.jp-plus` 命中
 - 命中内容高亮：黄色表示搜索词在字段内，绿色表示字段整体被搜索词包含
+- 账号列表右键复制邮箱/密码/2FA/整行
+- 密码和 2FA 默认隐藏，可手动显示
+- 复制后默认 30 秒自动清空剪贴板
 - 导出 TXT / CSV
 - 创建完整加密数据库备份，文件名：`AccountManager_Backup_yyyyMMdd_HHmmss.db`
 - 导入备份后会重启，必须输入该备份对应的主密码
@@ -68,6 +72,14 @@ powershell -ExecutionPolicy Bypass -File scripts\publish-installed.ps1
 
 ```text
 dist/installed/AccountManager_Setup.exe
+```
+
+GitHub Actions 会在推送 main、手动运行或发布 Release 时自动构建：
+
+```text
+AccountManager_Portable.zip
+AccountManager_Installed_App.zip
+AccountManager_Setup.exe
 ```
 
 ## 备份说明

@@ -12,7 +12,6 @@ public partial class UnlockWindow : Window
     {
         InitializeComponent();
         _security = security;
-        ModeText.Text = $"{AppPaths.BuildMode} · 数据目录：{AppPaths.DataDirectory}";
         HintText.Text = string.IsNullOrWhiteSpace(security.PasswordHint) ? "未设置提示词" : security.PasswordHint;
         Loaded += (_, _) => PasswordBox.Focus();
     }

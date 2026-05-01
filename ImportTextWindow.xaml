@@ -1,44 +1,54 @@
 ﻿<Window x:Class="AccountManager.ImportTextWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="批量导入账号" Height="620" Width="760"
+        Title="导入" Height="560" Width="760"
         WindowStartupLocation="CenterOwner">
-    <DockPanel Margin="16">
-        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-            <TextBlock Text="一行一个，格式：邮箱--密码--2FA，也支持 邮箱--密码 或 邮箱--密码--2FA--备注" FontWeight="SemiBold"/>
-            <TextBlock Text="导入时不会改变密码大小写；搜索时大小写不敏感。" Foreground="#666" Margin="0,4,0,0"/>
-        </StackPanel>
-
-        <Grid DockPanel.Dock="Bottom" Margin="0,12,0,0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+    <DockPanel Margin="10">
+        <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="180"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="180"/>
+                <ColumnDefinition Width="140"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="160"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="140"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <TextBlock Text="默认分类" VerticalAlignment="Center" Margin="0,0,8,8"/>
-            <TextBox x:Name="CategoryBox" Grid.Column="1" Height="28" Margin="0,0,16,8"/>
-            <TextBlock Grid.Column="2" Text="默认标签" VerticalAlignment="Center" Margin="0,0,8,8"/>
-            <TextBox x:Name="TagsBox" Grid.Column="3" Height="28" Margin="0,0,16,8" ToolTip="多个标签用逗号分隔"/>
-            <TextBlock Grid.Column="4" Text="重复邮箱" VerticalAlignment="Center" Margin="0,0,8,8"/>
-            <ComboBox x:Name="DuplicateBox" Grid.Column="5" SelectedIndex="0" Height="28" Margin="0,0,0,8">
-                <ComboBoxItem Content="跳过重复"/>
-                <ComboBoxItem Content="覆盖重复"/>
-                <ComboBoxItem Content="保留两个"/>
+            <TextBlock Text="分类" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <TextBox x:Name="CategoryBox" Grid.Column="1" Height="26"/>
+            <TextBlock Grid.Column="2" Text="标签" VerticalAlignment="Center" Margin="12,0,6,0"/>
+            <TextBox x:Name="TagsBox" Grid.Column="3" Height="26"/>
+            <TextBlock Grid.Column="4" Text="重复" VerticalAlignment="Center" Margin="12,0,6,0"/>
+            <ComboBox x:Name="DuplicateBox" Grid.Column="5" SelectedIndex="0" Height="26">
+                <ComboBoxItem Content="跳过"/>
+                <ComboBoxItem Content="覆盖"/>
+                <ComboBoxItem Content="保留"/>
             </ComboBox>
+        </Grid>
 
-            <StackPanel Grid.Row="1" Grid.ColumnSpan="7" Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="取消" Width="90" Margin="0,0,10,0" IsCancel="True"/>
-                <Button Content="导入" Width="100" IsDefault="True" Click="Import_Click"/>
+        <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="邮箱--密码--2FA" Foreground="#555"/>
+                <TextBlock x:Name="SourceText" Foreground="#777" Margin="12,0,0,0"/>
             </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button Content="预览" Width="72" Height="26" Margin="0,0,6,0" Click="Preview_Click"/>
+                <Button Content="导入" Width="72" Height="26" IsDefault="True" Click="Import_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <Grid DockPanel.Dock="Bottom" Height="92" Margin="0,8,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <TextBlock x:Name="PreviewText" Foreground="#555"/>
+            <TextBox x:Name="PreviewErrorsBox" Grid.Row="1" Margin="0,4,0,0" IsReadOnly="True" VerticalScrollBarVisibility="Auto" BorderBrush="#DDD"/>
         </Grid>
 
         <TextBox x:Name="ImportTextBox" AcceptsReturn="True" AcceptsTab="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" TextWrapping="NoWrap" FontFamily="Consolas"/>
