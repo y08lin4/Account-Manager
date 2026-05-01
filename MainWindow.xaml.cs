@@ -5,7 +5,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -281,9 +280,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (dialog.ShowDialog(this) == true) OpenImportFiles(dialog.FileNames);
     }
 
-    private void QuickImport_Click(object sender, RoutedEventArgs e)
+    private async void QuickImport_Click(object sender, RoutedEventArgs e)
     {
-        var text = Clipboard.ContainsText() ? Clipboard.GetText() : string.Empty;
+        var text = await NativeClipboardService.GetTextAsync();
         OpenQuickImportWindow(text);
     }
 
@@ -775,12 +774,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (GetSelectedAccount() is { } account) CopyText($"{account.Email}--{account.Password}--{account.TwoFa}", "整行已复制");
     }
 
-    private void CopyText(string text, string status)
+    private async void CopyText(string text, string status)
     {
         if (string.IsNullOrEmpty(text)) return;
-        if (!TrySetClipboardText(text))
+        StatusText.Text = "复制中…";
+
+        if (!await NativeClipboardService.SetTextAsync(text))
         {
-            StatusText.Text = "剪贴板被占用，请重试";
+            StatusText.Text = "剪贴板被占用，请稍后重试";
             return;
         }
 
@@ -790,44 +791,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         StatusText.Text = $"{status} · {ClipboardClearSeconds}s 后清空剪贴板";
     }
 
-    private static bool TrySetClipboardText(string text)
-    {
-        for (var i = 0; i < 8; i++)
-        {
-            try
-            {
-                Clipboard.SetText(text);
-                return true;
-            }
-            catch (COMException)
-            {
-                Thread.Sleep(40);
-            }
-        }
-
-        return false;
-    }
-
-    private void ClipboardTimer_Tick(object? sender, EventArgs e)
+    private async void ClipboardTimer_Tick(object? sender, EventArgs e)
     {
         _clipboardTimer.Stop();
-        if (string.IsNullOrEmpty(_lastCopiedText)) return;
+        var copiedText = _lastCopiedText;
+        _lastCopiedText = null;
+        if (string.IsNullOrEmpty(copiedText)) return;
 
-        try
+        if (await NativeClipboardService.ClearIfTextEqualsAsync(copiedText))
         {
-            if (Clipboard.ContainsText() && Clipboard.GetText() == _lastCopiedText)
-            {
-                Clipboard.Clear();
-                StatusText.Text = "剪贴板已清空";
-            }
-        }
-        catch
-        {
-            // Clipboard can be temporarily locked by other processes.
-        }
-        finally
-        {
-            _lastCopiedText = null;
+            StatusText.Text = "剪贴板已清空";
         }
     }
 
