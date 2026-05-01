@@ -145,11 +145,11 @@ public partial class SettingsWindow : Window
         try
         {
             _security.ChangeSecurity(window.MasterPassword, window.PasswordHint, window.RecoveryQuestion, window.RecoveryAnswer);
-            MessageBox.Show(this, "安全设置已更新。", "设置", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppDialog.Success(this, "设置", "安全设置已更新。");
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "更新失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppDialog.Warning(this, "更新失败", ex.Message);
         }
     }
 
@@ -157,7 +157,7 @@ public partial class SettingsWindow : Window
     {
         if (string.IsNullOrWhiteSpace(_apiServer.GetToken()))
         {
-            MessageBox.Show(this, "还没有创建 API Token。", "API", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppDialog.Info(this, "API", "还没有创建 API Token。");
             return;
         }
 
@@ -171,7 +171,7 @@ public partial class SettingsWindow : Window
         var token = _apiServer.GetToken();
         if (string.IsNullOrWhiteSpace(token))
         {
-            MessageBox.Show(this, "还没有创建 API Token。", "API", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppDialog.Info(this, "API", "还没有创建 API Token。");
             return;
         }
 
@@ -179,17 +179,17 @@ public partial class SettingsWindow : Window
 
         if (await NativeClipboardService.SetTextAsync(token))
         {
-            MessageBox.Show(this, "Token 已复制。", "API", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppDialog.Success(this, "API", "Token 已复制。");
         }
         else
         {
-            MessageBox.Show(this, "剪贴板被占用，请稍后重试。", "API", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppDialog.Warning(this, "API", "剪贴板被占用，请稍后重试。");
         }
     }
 
     private void NewToken_Click(object sender, RoutedEventArgs e)
     {
-        if (MessageBox.Show(this, "新建 Token 后，旧 Token 会立即失效。继续？", "新建 Token", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        if (!AppDialog.Confirm(this, "新建 Token", "新建 Token 后，旧 Token 会立即失效。继续？"))
         {
             return;
         }
@@ -198,18 +198,18 @@ public partial class SettingsWindow : Window
 
         _visibleToken = _apiServer.RegenerateToken();
         RefreshApiTokenDisplay();
-        MessageBox.Show(this, "新 Token 已创建，旧 Token 已失效。", "API", MessageBoxButton.OK, MessageBoxImage.Information);
+        AppDialog.Success(this, "API", "新 Token 已创建，旧 Token 已失效。");
     }
 
     private void DeleteToken_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(_apiServer.GetToken()))
         {
-            MessageBox.Show(this, "当前没有 API Token。", "API", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppDialog.Info(this, "API", "当前没有 API Token。");
             return;
         }
 
-        if (MessageBox.Show(this, "删除后 API 认证接口将不可用，直到重新新建 Token。继续？", "删除 Token", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        if (!AppDialog.Confirm(this, "删除 Token", "删除后 API 认证接口将不可用，直到重新新建 Token。继续？"))
         {
             return;
         }
@@ -219,7 +219,7 @@ public partial class SettingsWindow : Window
         _apiServer.DeleteToken();
         _visibleToken = string.Empty;
         RefreshApiTokenDisplay();
-        MessageBox.Show(this, "Token 已删除。", "API", MessageBoxButton.OK, MessageBoxImage.Information);
+        AppDialog.Success(this, "API", "Token 已删除。");
     }
 
     private void ChooseBackupDirectory_Click(object sender, RoutedEventArgs e)
@@ -245,7 +245,7 @@ public partial class SettingsWindow : Window
         var directory = GetBackupDirectory();
         if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
         {
-            MessageBox.Show(this, "备份目录不存在，请先修改。", "路径", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppDialog.Info(this, "路径", "备份目录不存在，请先修改。");
             return;
         }
 

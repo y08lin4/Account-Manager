@@ -19,7 +19,7 @@ public partial class RecoverPasswordWindow : Window
     {
         if (NewPasswordBox.Password != ConfirmPasswordBox.Password)
         {
-            MessageBox.Show(this, "两次输入的新主密码不一致。", "校验失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppDialog.Warning(this, "校验失败", "两次输入的新主密码不一致。");
             return;
         }
 
@@ -27,16 +27,16 @@ public partial class RecoverPasswordWindow : Window
         {
             if (!_security.TryRecoverAndResetPassword(AnswerBox.Password, NewPasswordBox.Password, HintBox.Text))
             {
-                MessageBox.Show(this, "保护答案不正确。", "恢复失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                AppDialog.Warning(this, "恢复失败", "保护答案不正确。");
                 return;
             }
 
-            MessageBox.Show(this, "主密码已重置，数据库已解锁。", "恢复成功", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppDialog.Success(this, "恢复成功", "主密码已重置，数据库已解锁。");
             DialogResult = true;
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "恢复失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppDialog.Warning(this, "恢复失败", ex.Message);
         }
     }
 }

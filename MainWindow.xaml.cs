@@ -114,7 +114,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "加载失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Error(this, "加载失败", ex.Message);
         }
     }
 
@@ -456,13 +456,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         var password = GetPasswordText();
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
         {
-            MessageBox.Show(this, "请输入有效邮箱。", "校验失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppDialog.Warning(this, "校验失败", "请输入有效邮箱。");
             return;
         }
 
         if (string.IsNullOrEmpty(password))
         {
-            MessageBox.Show(this, "密码不能为空。", "校验失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppDialog.Warning(this, "校验失败", "密码不能为空。");
             return;
         }
 
@@ -487,7 +487,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "保存失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Error(this, "保存失败", ex.Message);
         }
     }
 
@@ -496,11 +496,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         var selectedId = GetSelectedAccount()?.Id ?? _editingId;
         if (selectedId == 0)
         {
-            MessageBox.Show(this, "请先选择账号。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppDialog.Info(this, "提示", "请先选择账号。");
             return;
         }
 
-        if (MessageBox.Show(this, "确定删除？", "删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (!AppDialog.Confirm(this, "删除", "确定删除选中的账号？")) return;
 
         try
         {
@@ -509,7 +509,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "删除失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Error(this, "删除失败", ex.Message);
         }
     }
 
@@ -572,16 +572,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         var (text, errors) = ReadImportFiles(fileNames);
         if (errors.Count > 0)
         {
-            MessageBox.Show(this,
-                string.Join("\n", errors.Take(10)) + (errors.Count > 10 ? $"\n……还有 {errors.Count - 10} 个" : string.Empty),
+            AppDialog.Warning(this,
                 "导入提示",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+                "部分文件读取失败。",
+                string.Join("\n", errors.Take(10)) + (errors.Count > 10 ? $"\n……还有 {errors.Count - 10} 个" : string.Empty));
         }
 
         if (string.IsNullOrWhiteSpace(text))
         {
-            MessageBox.Show(this, "没有内容。", "导入", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppDialog.Warning(this, "导入", "没有内容。");
             return;
         }
 
@@ -635,7 +634,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         var parsed = AccountImportExport.ParsePlainText(text, defaultCategory, defaultTags);
         if (parsed.Accounts.Count == 0)
         {
-            MessageBox.Show(this, BuildImportResultMessage(parsed.TotalLines, 0, 0, 0, 0, parsed.Errors), "导入", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppDialog.Warning(this, "导入", "没有可导入的账号。", BuildImportResultMessage(parsed.TotalLines, 0, 0, 0, 0, parsed.Errors));
             return;
         }
 
@@ -645,15 +644,19 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             result.TotalLines = parsed.TotalLines;
             result.Errors.AddRange(parsed.Errors);
             LoadData();
-            MessageBox.Show(this,
-                BuildImportResultMessage(result.TotalLines, result.Parsed, result.Inserted, result.Updated, result.SkippedDuplicates, result.Errors),
-                "导入完成",
-                MessageBoxButton.OK,
-                result.Errors.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+            var details = BuildImportResultMessage(result.TotalLines, result.Parsed, result.Inserted, result.Updated, result.SkippedDuplicates, result.Errors);
+            if (result.Errors.Count > 0)
+            {
+                AppDialog.Warning(this, "导入完成", "导入已完成，但存在部分错误。", details);
+            }
+            else
+            {
+                AppDialog.Success(this, "导入完成", $"新增 {result.Inserted}，覆盖 {result.Updated}，跳过 {result.SkippedDuplicates}。", details);
+            }
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "导入失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Error(this, "导入失败", ex.Message);
         }
     }
 
@@ -702,11 +705,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         try
         {
             writer(dialog.FileName);
-            MessageBox.Show(this, dialog.FileName, "导出完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppDialog.Success(this, "导出完成", "文件已导出。", dialog.FileName);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "导出失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Error(this, "导出失败", ex.Message);
         }
     }
 
@@ -724,7 +727,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "备份失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Error(this, "备份失败", ex.Message);
         }
     }
 
@@ -764,18 +767,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void RestoreBackupFromPath(string backupPath)
     {
-        if (MessageBox.Show(this, "将替换当前数据库并重启。继续？", "导入备份", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (!AppDialog.Confirm(this, "导入备份", "将替换当前数据库并重启。继续？", backupPath)) return;
 
         try
         {
             _apiServer.Stop();
             _database.RestoreDatabaseFromBackup(backupPath);
-            MessageBox.Show(this, "已导入，程序将重启。", "导入备份", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppDialog.Success(this, "导入备份", "已导入，程序将重启。");
             RestartApplication();
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "恢复失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Error(this, "恢复失败", ex.Message);
         }
     }
 

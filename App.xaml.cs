@@ -54,14 +54,14 @@ public partial class App : System.Windows.Application
             }
             catch (Exception ex)
             {
-                MessageBox.Show(setup, ex.Message, "设置失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                AppDialog.Warning(setup, "设置失败", ex.Message);
             }
         }
     }
 
     private static void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        MessageBox.Show(e.Exception.Message, "程序错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        AppDialog.Error(Current.MainWindow, "程序错误", e.Exception.Message);
         e.Handled = true;
     }
 }

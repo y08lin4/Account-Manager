@@ -22,20 +22,19 @@ public partial class SecuritySetupWindow : Window
     {
         if (PasswordBox.Password != ConfirmPasswordBox.Password)
         {
-            MessageBox.Show(this, "两次输入的主密码不一致。", "校验失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppDialog.Warning(this, "校验失败", "两次输入的主密码不一致。");
             return;
         }
 
         if (AnswerBox.Password != ConfirmAnswerBox.Password)
         {
-            MessageBox.Show(this, "两次输入的保护答案不一致。", "校验失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppDialog.Warning(this, "校验失败", "两次输入的保护答案不一致。");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(HintBox.Text))
         {
-            var result = MessageBox.Show(this, "没有设置提示词。解锁时将不会显示提示，确定继续吗？", "提示", MessageBoxButton.YesNo, MessageBoxImage.Question);
-            if (result != MessageBoxResult.Yes) return;
+            if (!AppDialog.Confirm(this, "提示", "没有设置提示词。解锁时将不会显示提示，确定继续吗？", kind: AppDialogKind.Info)) return;
         }
 
         DialogResult = true;

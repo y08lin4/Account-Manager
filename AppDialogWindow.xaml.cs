@@ -73,35 +73,37 @@ public enum AppDialogKind
 
 public static class AppDialog
 {
-    public static void Info(Window owner, string title, string message, string details = "")
+    public static void Info(Window? owner, string title, string message, string details = "")
     {
         Show(owner, title, message, details, AppDialogKind.Info);
     }
 
-    public static void Success(Window owner, string title, string message, string details = "")
+    public static void Success(Window? owner, string title, string message, string details = "")
     {
         Show(owner, title, message, details, AppDialogKind.Success);
     }
 
-    public static void Warning(Window owner, string title, string message, string details = "")
+    public static void Warning(Window? owner, string title, string message, string details = "")
     {
         Show(owner, title, message, details, AppDialogKind.Warning);
     }
 
-    public static void Error(Window owner, string title, string message, string details = "")
+    public static void Error(Window? owner, string title, string message, string details = "")
     {
         Show(owner, title, message, details, AppDialogKind.Error);
     }
 
-    public static bool Confirm(Window owner, string title, string message, string details = "", AppDialogKind kind = AppDialogKind.Warning)
+    public static bool Confirm(Window? owner, string title, string message, string details = "", AppDialogKind kind = AppDialogKind.Warning)
     {
-        var dialog = new AppDialogWindow(title, message, details, kind, confirmMode: true) { Owner = owner };
+        var dialog = new AppDialogWindow(title, message, details, kind, confirmMode: true);
+        if (owner is not null) dialog.Owner = owner;
         return dialog.ShowDialog() == true;
     }
 
-    private static void Show(Window owner, string title, string message, string details, AppDialogKind kind)
+    private static void Show(Window? owner, string title, string message, string details, AppDialogKind kind)
     {
-        var dialog = new AppDialogWindow(title, message, details, kind) { Owner = owner };
+        var dialog = new AppDialogWindow(title, message, details, kind);
+        if (owner is not null) dialog.Owner = owner;
         dialog.ShowDialog();
     }
 }

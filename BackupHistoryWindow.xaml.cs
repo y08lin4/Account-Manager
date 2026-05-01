@@ -54,7 +54,7 @@ public partial class BackupHistoryWindow : Window
     {
         if (SelectedBackup is not { } backup)
         {
-            MessageBox.Show(this, "请先选择备份。", "备份历史", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppDialog.Info(this, "备份历史", "请先选择备份。");
             return;
         }
 
@@ -66,11 +66,11 @@ public partial class BackupHistoryWindow : Window
     {
         if (SelectedBackup is not { } backup)
         {
-            MessageBox.Show(this, "请先选择备份。", "备份历史", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppDialog.Info(this, "备份历史", "请先选择备份。");
             return;
         }
 
-        if (MessageBox.Show(this, $"确定删除这个备份？\n{backup.Name}", "删除备份", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        if (!AppDialog.Confirm(this, "删除备份", "确定删除这个备份？", backup.Name))
         {
             return;
         }
@@ -82,7 +82,7 @@ public partial class BackupHistoryWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "删除失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppDialog.Error(this, "删除失败", ex.Message);
         }
     }
 

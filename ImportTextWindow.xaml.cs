@@ -48,19 +48,21 @@ public partial class ImportTextWindow : Window
     {
         if (string.IsNullOrWhiteSpace(ImportTextBox.Text))
         {
-            MessageBox.Show(this, "没有内容。", "导入", MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppDialog.Warning(this, "导入", "没有内容。");
             return;
         }
 
         var preview = UpdatePreview();
         if (preview.ExistingDuplicates > 0 || preview.InputDuplicates > 0 || preview.Errors.Count > 0)
         {
-            var result = MessageBox.Show(this,
-                BuildConfirmMessage(preview),
-                "确认导入",
-                MessageBoxButton.YesNo,
-                preview.Errors.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Question);
-            if (result != MessageBoxResult.Yes) return;
+            if (!AppDialog.Confirm(this,
+                    "确认导入",
+                    "导入内容包含重复或错误，请确认统计结果。",
+                    BuildConfirmMessage(preview),
+                    preview.Errors.Count > 0 ? AppDialogKind.Warning : AppDialogKind.Info))
+            {
+                return;
+            }
         }
 
         DialogResult = true;
