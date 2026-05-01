@@ -17,6 +17,8 @@ public static class AppPaths
 
     public static string DatabasePath => Path.Combine(DataDirectory, "accounts.db");
 
+    public static string ApiTokenPath => Path.Combine(DataDirectory, "api-token.txt");
+
     public static string SuggestedBackupDirectory
     {
         get

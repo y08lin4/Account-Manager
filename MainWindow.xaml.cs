@@ -21,6 +21,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private readonly AccountDatabase _database;
     private readonly SecurityService _security;
+    private readonly LocalApiServer _apiServer;
     private readonly ObservableCollection<AccountRecord> _visibleAccounts = new();
     private readonly ObservableCollection<FilterItem> _categoryFilters = new();
     private readonly ObservableCollection<FilterItem> _tagFilters = new();
@@ -31,6 +32,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private long _editingId;
     private string _searchText = string.Empty;
     private bool _refreshingFilters;
+    private bool _editingEmail;
     private bool _showPassword;
     private bool _editingPassword;
     private bool _editingTwoFa;
@@ -41,6 +43,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string _lastTotpCode = string.Empty;
     private bool _lastTotpValid;
     private string? _lastCopiedText;
+    private string _apiStatus = string.Empty;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -60,6 +63,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         InitializeComponent();
         _database = database;
         _security = security;
+        _apiServer = new LocalApiServer(_database, _security, RequestDataRefresh);
         DataContext = this;
         Title = $"AccountManager - {AppPaths.BuildMode}";
         AccountsGrid.ItemsSource = _visibleAccounts;
@@ -75,8 +79,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         Loaded += (_, _) =>
         {
             LoadData();
+            StartLocalApi();
             SearchBox.Focus();
         };
+
+        Closed += (_, _) => _apiServer.Dispose();
     }
 
     private void LoadData()
@@ -138,7 +145,30 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         foreach (var account in filtered) _visibleAccounts.Add(account);
 
         EmptyHintText.Visibility = _visibleAccounts.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        StatusText.Text = $"{_visibleAccounts.Count}/{_allAccounts.Count} · {AppPaths.BuildMode} · {AppPaths.DataDirectory}";
+        var apiSuffix = string.IsNullOrWhiteSpace(_apiStatus) ? string.Empty : $" · {_apiStatus}";
+        StatusText.Text = $"{_visibleAccounts.Count}/{_allAccounts.Count} · {AppPaths.BuildMode} · {AppPaths.DataDirectory}{apiSuffix}";
+    }
+
+    private void StartLocalApi()
+    {
+        if (_apiServer.Start())
+        {
+            _apiStatus = $"API {_apiServer.BaseUrl}";
+        }
+        else
+        {
+            _apiStatus = $"API未启动：{_apiServer.LastError}";
+        }
+
+        ApplyFilters();
+    }
+
+    private void RequestDataRefresh()
+    {
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (_security.IsUnlocked) LoadData();
+        }), DispatcherPriority.Background);
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -156,6 +186,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (AccountsGrid.SelectedItem is not AccountRecord account) return;
         _editingId = account.Id;
+        _editingEmail = false;
+        EmailBox.IsReadOnly = true;
         EmailBox.Text = account.Email;
         SetSecrets(account.Password, account.TwoFa);
         CategoryBox.Text = account.Category;
@@ -196,6 +228,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void ClearEditor()
     {
         _editingId = 0;
+        _editingEmail = true;
+        EmailBox.IsReadOnly = false;
         EmailBox.Clear();
         SetSecrets(string.Empty, string.Empty);
         CategoryBox.Clear();
@@ -207,6 +241,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
+        if (_editingEmail) CommitEmailEdit();
+        CommitSecretEdits();
+
         var email = EmailBox.Text.Trim();
         var password = GetPasswordText();
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
@@ -502,6 +539,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         try
         {
+            _apiServer.Stop();
             _database.RestoreDatabaseFromBackup(dialog.FileName);
             MessageBox.Show(this, "已导入，程序将重启。", "导入备份", MessageBoxButton.OK, MessageBoxImage.Information);
             RestartApplication();
@@ -530,6 +568,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void Lock_Click(object sender, RoutedEventArgs e)
     {
+        _apiServer.Stop();
         _security.Lock();
         RestartApplication();
     }
@@ -640,6 +679,49 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         return TotpService.TryGenerateCode(GetTwoFaText(), out var code, out _) ? code : string.Empty;
     }
 
+    private void EmailBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount >= 2)
+        {
+            BeginEmailEdit();
+            e.Handled = true;
+            return;
+        }
+
+        if (!_editingEmail)
+        {
+            CopyText(EmailBox.Text, "邮箱已复制");
+            e.Handled = true;
+        }
+    }
+
+    private void BeginEmailEdit()
+    {
+        _editingEmail = true;
+        EmailBox.IsReadOnly = false;
+        EmailBox.Focus();
+        EmailBox.SelectAll();
+        StatusText.Text = "正在编辑邮箱";
+    }
+
+    private void EmailBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (_editingEmail) CommitEmailEdit();
+    }
+
+    private void CommitEmailEdit()
+    {
+        if (_editingId == 0)
+        {
+            _editingEmail = true;
+            EmailBox.IsReadOnly = false;
+            return;
+        }
+
+        _editingEmail = false;
+        EmailBox.IsReadOnly = true;
+    }
+
     private void PasswordBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ClickCount >= 2)
@@ -704,16 +786,19 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_editingTwoFa) CommitTwoFaEdit();
     }
 
-    private void SecretEditBox_KeyDown(object sender, KeyEventArgs e)
+    private void EditorBox_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
         {
+            if (_editingEmail) CommitEmailEdit();
             CommitSecretEdits();
             Keyboard.ClearFocus();
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)
         {
+            _editingEmail = false;
+            EmailBox.IsReadOnly = true;
             _editingPassword = false;
             _editingTwoFa = false;
             RefreshPasswordDisplay();

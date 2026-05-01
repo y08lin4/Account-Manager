@@ -156,14 +156,13 @@
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <TextBlock Style="{StaticResource FieldLabel}" Text="邮箱"/>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="EmailBox" Height="28"/>
-                            <Button Grid.Column="1" Style="{StaticResource CopyButton}" Click="CopyEmail_Click"/>
-                        </Grid>
+                        <TextBox x:Name="EmailBox"
+                                 Height="28"
+                                 IsReadOnly="True"
+                                 ToolTip="单击复制，双击编辑"
+                                 PreviewMouseLeftButtonDown="EmailBox_PreviewMouseLeftButtonDown"
+                                 LostKeyboardFocus="EmailBox_LostKeyboardFocus"
+                                 KeyDown="EditorBox_KeyDown"/>
 
                         <TextBlock Style="{StaticResource FieldLabel}" Text="密码"/>
                         <Grid>
@@ -177,7 +176,7 @@
                                      ToolTip="单击复制，双击编辑"
                                      PreviewMouseLeftButtonDown="PasswordBox_PreviewMouseLeftButtonDown"
                                      LostKeyboardFocus="PasswordBox_LostKeyboardFocus"
-                                     KeyDown="SecretEditBox_KeyDown"/>
+                                     KeyDown="EditorBox_KeyDown"/>
                             <Button x:Name="TogglePasswordButton"
                                     Grid.Column="1"
                                     FontFamily="Segoe MDL2 Assets"
@@ -202,7 +201,7 @@
                                      ToolTip="单击复制验证码，双击编辑密钥"
                                      PreviewMouseLeftButtonDown="TwoFaCodeBox_PreviewMouseLeftButtonDown"
                                      LostKeyboardFocus="TwoFaCodeBox_LostKeyboardFocus"
-                                     KeyDown="SecretEditBox_KeyDown"/>
+                                     KeyDown="EditorBox_KeyDown"/>
                         </Grid>
 
                         <TextBlock Style="{StaticResource FieldLabel}" Text="分类"/>
