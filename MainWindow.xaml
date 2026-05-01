@@ -17,6 +17,12 @@
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
+        <Style x:Key="ToolbarTextButton" TargetType="Button">
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
         <Style x:Key="CopyButton" BasedOn="{StaticResource IconButton}" TargetType="Button">
             <Setter Property="Width" Value="30"/>
             <Setter Property="Height" Value="26"/>
@@ -33,15 +39,15 @@
     <DockPanel Background="White">
         <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="8,8,8,6">
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" Margin="8,0,0,0">
-                <Button Style="{StaticResource IconButton}" Content="&#xE710;" ToolTip="新增" Click="New_Click"/>
-                <Button Style="{StaticResource IconButton}" Content="&#xE8B5;" ToolTip="导入 TXT / 多文件" Click="ImportTxt_Click"/>
-                <Button Style="{StaticResource IconButton}" Content="&#xE77F;" ToolTip="粘贴导入" Click="PasteImport_Click"/>
-                <Button Style="{StaticResource IconButton}" Content="&#xE74E;" ToolTip="导出 TXT" Click="ExportTxt_Click"/>
-                <Button Style="{StaticResource IconButton}" Content="&#xE8A5;" ToolTip="导出 CSV" Click="ExportCsv_Click"/>
-                <Button Style="{StaticResource IconButton}" Content="&#xE777;" ToolTip="创建备份" Click="CreateBackup_Click"/>
-                <Button Style="{StaticResource IconButton}" Content="&#xE896;" ToolTip="导入备份" Click="RestoreBackup_Click"/>
-                <Button Style="{StaticResource IconButton}" Content="&#xE713;" ToolTip="安全设置" Click="SecuritySettings_Click"/>
-                <Button Style="{StaticResource IconButton}" Content="&#xE72E;" ToolTip="锁定" Click="Lock_Click"/>
+                <Button Style="{StaticResource ToolbarTextButton}" Content="新增" ToolTip="手动添加一个账号" Click="New_Click"/>
+                <Button Style="{StaticResource ToolbarTextButton}" Content="快捷导入" ToolTip="粘贴多行账号，填写分类和标签后直接入库" Click="QuickImport_Click"/>
+                <Button Style="{StaticResource ToolbarTextButton}" Content="文件导入" ToolTip="选择一个或多个 TXT 文件导入" Click="ImportTxt_Click"/>
+                <Button Style="{StaticResource ToolbarTextButton}" Content="导出TXT" ToolTip="导出当前列表为 TXT" Click="ExportTxt_Click"/>
+                <Button Style="{StaticResource ToolbarTextButton}" Content="导出CSV" ToolTip="导出当前列表为 CSV" Click="ExportCsv_Click"/>
+                <Button Style="{StaticResource ToolbarTextButton}" Content="备份" ToolTip="创建完整数据库备份" Click="CreateBackup_Click"/>
+                <Button Style="{StaticResource ToolbarTextButton}" Content="恢复" ToolTip="从备份恢复数据库" Click="RestoreBackup_Click"/>
+                <Button Style="{StaticResource ToolbarTextButton}" Content="设置" ToolTip="修改主密码、提示词和保护问题" Click="SecuritySettings_Click"/>
+                <Button Style="{StaticResource ToolbarTextButton}" Content="锁定" ToolTip="锁定并重新打开解锁页" Click="Lock_Click"/>
             </StackPanel>
 
             <Grid>

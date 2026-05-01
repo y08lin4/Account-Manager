@@ -1,0 +1,54 @@
+﻿<Window x:Class="AccountManager.QuickImportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="快捷导入" Height="560" Width="760"
+        WindowStartupLocation="CenterOwner"
+        AllowDrop="True"
+        DragOver="QuickImportWindow_DragOver"
+        Drop="QuickImportWindow_Drop">
+    <DockPanel Margin="10">
+        <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="160"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="160"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="140"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Text="分类" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <TextBox x:Name="CategoryBox" Grid.Column="1" Height="26"/>
+            <TextBlock Grid.Column="2" Text="标签" VerticalAlignment="Center" Margin="12,0,6,0"/>
+            <TextBox x:Name="TagsBox" Grid.Column="3" Height="26"/>
+            <TextBlock Grid.Column="4" Text="重复" VerticalAlignment="Center" Margin="12,0,6,0"/>
+            <ComboBox x:Name="DuplicateBox" Grid.Column="5" SelectedIndex="0" Height="26">
+                <ComboBoxItem Content="跳过"/>
+                <ComboBoxItem Content="覆盖"/>
+                <ComboBoxItem Content="保留"/>
+            </ComboBox>
+            <Button Grid.Column="7" Content="预览" Width="72" Height="26" Margin="8,0,6,0" Click="Preview_Click"/>
+            <Button Grid.Column="8" Content="导入" Width="72" Height="26" IsDefault="True" Click="Import_Click"/>
+        </Grid>
+
+        <Grid DockPanel.Dock="Bottom" Height="92" Margin="0,8,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <TextBlock x:Name="PreviewText" Foreground="#555"/>
+            <TextBox x:Name="PreviewErrorsBox" Grid.Row="1" Margin="0,4,0,0" IsReadOnly="True" VerticalScrollBarVisibility="Auto" BorderBrush="#DDD"/>
+        </Grid>
+
+        <TextBox x:Name="ImportTextBox"
+                 AcceptsReturn="True"
+                 AcceptsTab="True"
+                 VerticalScrollBarVisibility="Auto"
+                 HorizontalScrollBarVisibility="Auto"
+                 TextWrapping="NoWrap"
+                 FontFamily="Consolas"/>
+    </DockPanel>
+</Window>

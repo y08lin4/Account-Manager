@@ -268,10 +268,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (dialog.ShowDialog(this) == true) OpenImportFiles(dialog.FileNames);
     }
 
-    private void PasteImport_Click(object sender, RoutedEventArgs e)
+    private void QuickImport_Click(object sender, RoutedEventArgs e)
     {
         var text = Clipboard.ContainsText() ? Clipboard.GetText() : string.Empty;
-        OpenImportWindow(text, "剪贴板");
+        OpenQuickImportWindow(text);
+    }
+
+    private void PasteImport_Click(object sender, RoutedEventArgs e)
+    {
+        QuickImport_Click(sender, e);
     }
 
     private void MainWindow_DragOver(object sender, DragEventArgs e)
@@ -357,7 +362,20 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         var window = new ImportTextWindow(initialText, sourceDescription: sourceDescription) { Owner = this };
         if (window.ShowDialog() != true) return;
 
-        var parsed = AccountImportExport.ParsePlainText(window.ImportText, window.DefaultCategory, window.DefaultTags);
+        ImportParsedText(window.ImportText, window.DefaultCategory, window.DefaultTags, window.DuplicateMode);
+    }
+
+    private void OpenQuickImportWindow(string initialText)
+    {
+        var window = new QuickImportWindow(initialText) { Owner = this };
+        if (window.ShowDialog() != true) return;
+
+        ImportParsedText(window.ImportText, window.DefaultCategory, window.DefaultTags, window.DuplicateMode);
+    }
+
+    private void ImportParsedText(string text, string defaultCategory, string defaultTags, DuplicateMode duplicateMode)
+    {
+        var parsed = AccountImportExport.ParsePlainText(text, defaultCategory, defaultTags);
         if (parsed.Accounts.Count == 0)
         {
             MessageBox.Show(this, BuildImportResultMessage(parsed.TotalLines, 0, 0, 0, 0, parsed.Errors), "导入", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -366,7 +384,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         try
         {
-            var result = _database.ImportAccounts(parsed.Accounts, window.DuplicateMode);
+            var result = _database.ImportAccounts(parsed.Accounts, duplicateMode);
             result.TotalLines = parsed.TotalLines;
             result.Errors.AddRange(parsed.Errors);
             LoadData();
