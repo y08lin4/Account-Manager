@@ -30,7 +30,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private long _editingId;
     private string _searchText = string.Empty;
     private bool _refreshingFilters;
-    private bool _showSecrets;
+    private bool _showPassword;
+    private bool _showTwoFa;
     private string? _lastCopiedText;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -522,11 +523,19 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         RestartApplication();
     }
 
-    private void ToggleSecrets_Click(object sender, RoutedEventArgs e)
+    private void TogglePassword_Click(object sender, RoutedEventArgs e)
     {
         var password = GetPasswordText();
         var twoFa = GetTwoFaText();
-        _showSecrets = !_showSecrets;
+        _showPassword = !_showPassword;
+        SetSecrets(password, twoFa);
+    }
+
+    private void ToggleTwoFa_Click(object sender, RoutedEventArgs e)
+    {
+        var password = GetPasswordText();
+        var twoFa = GetTwoFaText();
+        _showTwoFa = !_showTwoFa;
         SetSecrets(password, twoFa);
     }
 
@@ -541,14 +550,17 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void UpdateSecretVisibility()
     {
-        PasswordHiddenBox.Visibility = _showSecrets ? Visibility.Collapsed : Visibility.Visible;
-        PasswordTextBox.Visibility = _showSecrets ? Visibility.Visible : Visibility.Collapsed;
-        TwoFaHiddenBox.Visibility = _showSecrets ? Visibility.Collapsed : Visibility.Visible;
-        TwoFaTextBox.Visibility = _showSecrets ? Visibility.Visible : Visibility.Collapsed;
+        PasswordHiddenBox.Visibility = _showPassword ? Visibility.Collapsed : Visibility.Visible;
+        PasswordTextBox.Visibility = _showPassword ? Visibility.Visible : Visibility.Collapsed;
+        TogglePasswordButton.Content = _showPassword ? "隐藏" : "显示";
+
+        TwoFaHiddenBox.Visibility = _showTwoFa ? Visibility.Collapsed : Visibility.Visible;
+        TwoFaTextBox.Visibility = _showTwoFa ? Visibility.Visible : Visibility.Collapsed;
+        ToggleTwoFaButton.Content = _showTwoFa ? "隐藏" : "显示";
     }
 
-    private string GetPasswordText() => _showSecrets ? PasswordTextBox.Text : PasswordHiddenBox.Password;
-    private string GetTwoFaText() => _showSecrets ? TwoFaTextBox.Text : TwoFaHiddenBox.Password;
+    private string GetPasswordText() => _showPassword ? PasswordTextBox.Text : PasswordHiddenBox.Password;
+    private string GetTwoFaText() => _showTwoFa ? TwoFaTextBox.Text : TwoFaHiddenBox.Password;
 
     private AccountRecord? GetSelectedAccount() => AccountsGrid.SelectedItem as AccountRecord;
 

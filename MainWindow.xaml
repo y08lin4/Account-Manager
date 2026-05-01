@@ -174,8 +174,8 @@
                             </Grid.ColumnDefinitions>
                             <PasswordBox x:Name="PasswordHiddenBox" Height="28"/>
                             <TextBox x:Name="PasswordTextBox" Height="28" Visibility="Collapsed"/>
-                            <Button Grid.Column="1" Style="{StaticResource IconButton}" Width="30" Height="26" Margin="4,0,0,0" Content="&#xE890;" ToolTip="显示/隐藏" Click="ToggleSecrets_Click"/>
-                            <Button Grid.Column="2" Style="{StaticResource CopyButton}" Click="CopyPassword_Click"/>
+                            <Button x:Name="TogglePasswordButton" Grid.Column="1" Content="显示" Width="52" Height="26" Margin="4,0,0,0" ToolTip="显示/隐藏密码" Click="TogglePassword_Click"/>
+                            <Button Grid.Column="2" Content="复制密码" Width="72" Height="26" Margin="4,0,0,0" Click="CopyPassword_Click"/>
                         </Grid>
 
                         <TextBlock Style="{StaticResource FieldLabel}" Text="2FA"/>
@@ -187,8 +187,8 @@
                             </Grid.ColumnDefinitions>
                             <PasswordBox x:Name="TwoFaHiddenBox" Height="28"/>
                             <TextBox x:Name="TwoFaTextBox" Height="28" Visibility="Collapsed"/>
-                            <Button Grid.Column="1" Style="{StaticResource IconButton}" Width="30" Height="26" Margin="4,0,0,0" Content="&#xE890;" ToolTip="显示/隐藏" Click="ToggleSecrets_Click"/>
-                            <Button Grid.Column="2" Style="{StaticResource CopyButton}" Click="CopyTwoFa_Click"/>
+                            <Button x:Name="ToggleTwoFaButton" Grid.Column="1" Content="显示" Width="52" Height="26" Margin="4,0,0,0" ToolTip="显示/隐藏2FA" Click="ToggleTwoFa_Click"/>
+                            <Button Grid.Column="2" Content="复制2FA" Width="72" Height="26" Margin="4,0,0,0" Click="CopyTwoFa_Click"/>
                         </Grid>
 
                         <TextBlock Style="{StaticResource FieldLabel}" Text="分类"/>
@@ -203,9 +203,9 @@
                 </ScrollViewer>
 
                 <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                    <Button Style="{StaticResource IconButton}" Content="&#xE8C8;" ToolTip="复制整行" Click="CopyLine_Click"/>
-                    <Button Style="{StaticResource IconButton}" Content="&#xE74D;" ToolTip="删除" Click="Delete_Click"/>
-                    <Button Style="{StaticResource IconButton}" Content="&#xE74E;" ToolTip="保存" Click="Save_Click"/>
+                    <Button Content="复制整行" Width="82" Height="28" Margin="0,0,6,0" ToolTip="复制 邮箱--密码--2FA" Click="CopyLine_Click"/>
+                    <Button Content="删除" Width="60" Height="28" Margin="0,0,6,0" Click="Delete_Click"/>
+                    <Button Content="保存" Width="60" Height="28" Click="Save_Click"/>
                 </StackPanel>
             </Grid>
         </Grid>
