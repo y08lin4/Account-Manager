@@ -48,7 +48,7 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal">
-                <TextBlock Text="邮箱--密码--2FA / 三行一组：邮箱 / 密码 / 2FA，行尾 -- 会自动忽略" Foreground="{StaticResource SubTextBrush}"/>
+                <TextBlock Text="支持 TXT / CSV；邮箱--密码--2FA，或三行一组：邮箱 / 密码 / 2FA" Foreground="{StaticResource SubTextBrush}"/>
                 <TextBlock x:Name="SourceText" Foreground="{StaticResource SubTextBrush}" Margin="12,0,0,0"/>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal">

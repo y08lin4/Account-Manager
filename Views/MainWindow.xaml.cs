@@ -638,8 +638,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         var dialog = new OpenFileDialog
         {
-            Title = "选择 TXT",
-            Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*",
+            Title = "选择导入文件",
+            Filter = "导入文件 (*.txt;*.csv)|*.txt;*.csv|Text files (*.txt)|*.txt|CSV files (*.csv)|*.csv|All files (*.*)|*.*",
             Multiselect = true
         };
 
