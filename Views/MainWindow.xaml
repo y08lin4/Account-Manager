@@ -78,6 +78,11 @@
                 <Button Style="{StaticResource ToolbarTextButton}" Content="更多 ▾" ToolTip="备份、恢复、API、设置和锁定" Click="ToolbarMenuButton_Click">
                     <Button.ContextMenu>
                         <ContextMenu>
+                            <MenuItem Header="全选当前列表" Click="SelectAllVisible_Click"/>
+                            <MenuItem Header="选中添加分类/标签" Click="BatchCategoryTagsSelected_Click"/>
+                            <MenuItem Header="筛选结果添加分类/标签" Click="BatchCategoryTagsVisible_Click"/>
+                            <MenuItem Header="全部添加分类/标签" Click="BatchCategoryTagsAll_Click"/>
+                            <Separator/>
                             <MenuItem Header="备份" Click="CreateBackup_Click"/>
                             <MenuItem Header="备份历史" Click="BackupHistory_Click"/>
                             <MenuItem Header="恢复" Click="RestoreBackup_Click"/>
@@ -127,7 +132,7 @@
             <Border x:Name="FirstVerticalSeparator" Grid.Row="0" Grid.Column="1" Background="{StaticResource BorderBrushLight}"/>
 
             <Grid x:Name="ListPanel" Grid.Row="0" Grid.Column="2" Margin="8,0">
-                <DataGrid x:Name="AccountsGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                <DataGrid x:Name="AccountsGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Extended"
                           CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
                           GridLinesVisibility="Horizontal"
                           SelectionChanged="AccountsGrid_SelectionChanged"
@@ -139,6 +144,9 @@
                             <MenuItem Header="复制密码" Click="CopySelectedPassword_Click"/>
                             <MenuItem Header="复制 2FA" Click="CopySelectedTwoFa_Click"/>
                             <MenuItem Header="复制整行" Click="CopySelectedLine_Click"/>
+                            <Separator/>
+                            <MenuItem Header="全选当前列表" Click="SelectAllVisible_Click"/>
+                            <MenuItem Header="选中添加分类/标签" Click="BatchCategoryTagsSelected_Click"/>
                             <Separator/>
                             <MenuItem Header="删除" Click="Delete_Click"/>
                         </ContextMenu>
@@ -173,6 +181,7 @@
                          Visibility="Collapsed"
                          BorderBrush="{StaticResource BorderBrushLight}"
                          BorderThickness="1"
+                         SelectionMode="Extended"
                          SelectionChanged="CompactAccountsList_SelectionChanged"
                          MouseDoubleClick="CompactAccountsList_MouseDoubleClick"
                          PreviewMouseRightButtonDown="CompactAccountsList_PreviewMouseRightButtonDown"
@@ -183,6 +192,9 @@
                             <MenuItem Header="复制密码" Click="CopySelectedPassword_Click"/>
                             <MenuItem Header="复制 2FA" Click="CopySelectedTwoFa_Click"/>
                             <MenuItem Header="复制整行" Click="CopySelectedLine_Click"/>
+                            <Separator/>
+                            <MenuItem Header="全选当前列表" Click="SelectAllVisible_Click"/>
+                            <MenuItem Header="选中添加分类/标签" Click="BatchCategoryTagsSelected_Click"/>
                             <Separator/>
                             <MenuItem Header="删除" Click="Delete_Click"/>
                         </ContextMenu>

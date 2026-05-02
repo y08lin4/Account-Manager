@@ -80,10 +80,8 @@ public partial class ImportTextWindow : Window
         }
 
         var sb = new StringBuilder();
-        foreach (var duplicate in preview.DuplicateSamples.Take(12)) sb.AppendLine($"重复：{duplicate}");
-        if (preview.DuplicateSamples.Count > 12) sb.AppendLine($"……还有 {preview.DuplicateSamples.Count - 12} 个重复账号");
-        foreach (var error in preview.Errors.Take(20)) sb.AppendLine(error);
-        if (preview.Errors.Count > 20) sb.AppendLine($"……还有 {preview.Errors.Count - 20} 条错误");
+        foreach (var duplicate in preview.DuplicateSamples) sb.AppendLine($"重复：{duplicate}");
+        foreach (var error in preview.Errors) sb.AppendLine(error);
         PreviewErrorsBox.Text = sb.ToString();
         return preview;
     }

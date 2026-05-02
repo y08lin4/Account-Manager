@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using AccountManager.Models;
 
 namespace AccountManager.Services;
@@ -93,10 +94,10 @@ public static class AccountImportExport
     private static AccountRecord? ParseLine(string line, string defaultCategory, string defaultTags, out string error)
     {
         error = string.Empty;
-        var parts = line.Split("--", StringSplitOptions.None);
+        var parts = Regex.Split(line, "-{2,}");
         if (parts.Length < 2)
         {
-            error = "缺少分隔符 --，格式应为 邮箱--密码--2FA";
+            error = "缺少分隔符，格式应为 邮箱--密码--2FA，连续 2 个及以上 - 都可识别";
             return null;
         }
 

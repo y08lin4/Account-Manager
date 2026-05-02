@@ -42,7 +42,7 @@
         </Grid>
 
         <TextBlock Grid.Row="1"
-                   Text="一行一个：邮箱--密码--2FA，可直接粘贴或拖拽文本。"
+                   Text="一行一个：邮箱--密码--2FA，连续 2 个及以上 - 都可作为分隔符。"
                    Style="{StaticResource MutedText}"
                    Margin="0,0,0,6"/>
 

@@ -513,6 +513,116 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
+    private void SelectAllVisible_Click(object sender, RoutedEventArgs e)
+    {
+        if (_visibleAccounts.Count == 0)
+        {
+            AppDialog.Info(this, "全选", "当前列表没有账号。");
+            return;
+        }
+
+        _syncingSelection = true;
+        AccountsGrid.SelectedItems.Clear();
+        CompactAccountsList.SelectedItems.Clear();
+        foreach (var account in _visibleAccounts)
+        {
+            AccountsGrid.SelectedItems.Add(account);
+            CompactAccountsList.SelectedItems.Add(account);
+        }
+        _syncingSelection = false;
+
+        SelectAccount(_visibleAccounts[0]);
+        StatusText.Text = $"已全选当前列表 {_visibleAccounts.Count} 个账号";
+    }
+
+    private void BatchCategoryTagsSelected_Click(object sender, RoutedEventArgs e)
+    {
+        ApplyBatchCategoryTags(GetSelectedAccounts(), "选中账号");
+    }
+
+    private void BatchCategoryTagsVisible_Click(object sender, RoutedEventArgs e)
+    {
+        ApplyBatchCategoryTags(_visibleAccounts.ToList(), "当前筛选结果");
+    }
+
+    private void BatchCategoryTagsAll_Click(object sender, RoutedEventArgs e)
+    {
+        ApplyBatchCategoryTags(_allAccounts.ToList(), "全部账号");
+    }
+
+    private List<AccountRecord> GetSelectedAccounts()
+    {
+        var selected = AccountsGrid.SelectedItems
+            .OfType<AccountRecord>()
+            .Concat(CompactAccountsList.SelectedItems.OfType<AccountRecord>())
+            .GroupBy(account => account.Id)
+            .Select(group => group.First())
+            .ToList();
+
+        if (selected.Count == 0 && GetSelectedAccount() is { } account)
+        {
+            selected.Add(account);
+        }
+
+        return selected;
+    }
+
+    private void ApplyBatchCategoryTags(IReadOnlyCollection<AccountRecord> accounts, string scopeName)
+    {
+        if (accounts.Count == 0)
+        {
+            AppDialog.Info(this, "批量分类/标签", $"{scopeName}为空。");
+            return;
+        }
+
+        var window = new BatchCategoryTagWindow(scopeName, accounts.Count) { Owner = this };
+        if (window.ShowDialog() != true) return;
+
+        var category = window.Category;
+        var tags = AccountDatabase.NormalizeTagsForStorage(window.Tags);
+        var details = new StringBuilder()
+            .AppendLine($"范围：{scopeName}")
+            .AppendLine($"账号数：{accounts.Count}")
+            .AppendLine($"分类：{(string.IsNullOrWhiteSpace(category) ? "不修改" : category)}")
+            .AppendLine($"追加标签：{(string.IsNullOrWhiteSpace(tags) ? "不修改" : tags)}")
+            .ToString();
+
+        if (!AppDialog.Confirm(this, "批量分类/标签", "确认应用到这些账号？", details, AppDialogKind.Info)) return;
+
+        try
+        {
+            foreach (var account in accounts)
+            {
+                if (!string.IsNullOrWhiteSpace(category))
+                {
+                    account.Category = category;
+                }
+
+                if (!string.IsNullOrWhiteSpace(tags))
+                {
+                    account.Tags = MergeTags(account.Tags, tags);
+                }
+
+                _database.Update(account);
+            }
+
+            LoadData();
+            StatusText.Text = $"已更新 {accounts.Count} 个账号";
+        }
+        catch (Exception ex)
+        {
+            AppDialog.Error(this, "批量分类/标签失败", ex.Message);
+        }
+    }
+
+    private static string MergeTags(string existingTags, string newTags)
+    {
+        return string.Join(", ",
+            AccountDatabase.SplitTags(existingTags)
+                .Concat(AccountDatabase.SplitTags(newTags))
+                .Distinct(StringComparer.OrdinalIgnoreCase));
+    }
+
     private void ImportTxt_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog
@@ -575,7 +685,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             AppDialog.Warning(this,
                 "导入提示",
                 "部分文件读取失败。",
-                string.Join("\n", errors.Take(10)) + (errors.Count > 10 ? $"\n……还有 {errors.Count - 10} 个" : string.Empty));
+                string.Join("\n", errors));
         }
 
         if (string.IsNullOrWhiteSpace(text))
@@ -673,8 +783,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (errors.Count > 0)
         {
             sb.AppendLine();
-            foreach (var error in errors.Take(8)) sb.AppendLine(error);
-            if (errors.Count > 8) sb.AppendLine($"……还有 {errors.Count - 8} 条");
+            foreach (var error in errors) sb.AppendLine(error);
         }
 
         return sb.ToString();
