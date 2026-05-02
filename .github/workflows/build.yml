@@ -1,4 +1,4 @@
-﻿name: 打包 AccountManager
+name: 打包 AccountManager
 
 on:
   push:
@@ -87,7 +87,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AccountManager_Setup
-          path: dist/installed/AccountManager_Setup.exe
+          path: dist/installed/AccountManager_Setup_v*.exe
 
       - name: 发布到 GitHub Release
         if: github.event_name == 'release'
@@ -96,4 +96,4 @@ jobs:
           files: |
             dist/AccountManager_Portable.zip
             dist/AccountManager_Installed_App.zip
-            dist/installed/AccountManager_Setup.exe
+            dist/installed/AccountManager_Setup_v*.exe

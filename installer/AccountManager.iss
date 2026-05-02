@@ -1,5 +1,5 @@
 ﻿#define MyAppName "AccountManager"
-#define MyAppVersion "0.5.1"
+#define MyAppVersion "0.5.2"
 #define MyAppPublisher "AccountManager"
 #define MyAppExeName "AccountManager.exe"
 #define SourceDir "..\dist\installed\app"
@@ -13,7 +13,7 @@ DefaultDirName={localappdata}\Programs\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=..\dist\installed
-OutputBaseFilename=AccountManager_Setup
+OutputBaseFilename=AccountManager_Setup_v{#MyAppVersion}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
