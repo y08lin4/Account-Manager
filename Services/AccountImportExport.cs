@@ -12,18 +12,31 @@ public static class AccountImportExport
         var accounts = new List<AccountRecord>();
         var errors = new List<string>();
         var lines = text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
-        var lineNumber = 0;
+        var nonEmptyLines = lines
+            .Select((raw, index) => new ImportLine(index + 1, raw.Trim()))
+            .Where(item => !string.IsNullOrWhiteSpace(item.Text))
+            .ToList();
 
-        foreach (var raw in lines)
+        for (var index = 0; index < nonEmptyLines.Count; index++)
         {
-            lineNumber++;
-            var line = raw.Trim();
-            if (string.IsNullOrWhiteSpace(line)) continue;
-
-            var account = ParseLine(line, defaultCategory, defaultTags, out var error);
+            var line = nonEmptyLines[index];
+            var account = ParseLine(line.Text, defaultCategory, defaultTags, out var error);
             if (account is null)
             {
-                errors.Add($"第 {lineNumber} 行：{error} | {line}");
+                if (CanStartThreeLineAccount(line.Text))
+                {
+                    if (TryParseThreeLineAccount(nonEmptyLines, index, defaultCategory, defaultTags, out account, out error))
+                    {
+                        accounts.Add(account!);
+                        index += 2;
+                        continue;
+                    }
+
+                    errors.Add($"第 {line.LineNumber} 行：{error} | {line.Text}");
+                    continue;
+                }
+
+                errors.Add($"第 {line.LineNumber} 行：{error} | {line.Text}");
                 continue;
             }
 
@@ -31,6 +44,64 @@ public static class AccountImportExport
         }
 
         return (accounts, errors, lines.Length);
+    }
+
+    private static bool CanStartThreeLineAccount(string line)
+    {
+        return !line.Contains("--", StringComparison.Ordinal) && LooksLikeEmail(line);
+    }
+
+    private static bool TryParseThreeLineAccount(
+        IReadOnlyList<ImportLine> lines,
+        int startIndex,
+        string defaultCategory,
+        string defaultTags,
+        out AccountRecord? account,
+        out string error)
+    {
+        account = null;
+        error = string.Empty;
+
+        if (startIndex + 2 >= lines.Count)
+        {
+            error = "三行格式不完整，格式应为 邮箱 / 密码 / 2FA";
+            return false;
+        }
+
+        var email = lines[startIndex].Text.Trim();
+        var password = lines[startIndex + 1].Text;
+        var twofa = lines[startIndex + 2].Text;
+
+        if (!LooksLikeEmail(email))
+        {
+            error = "邮箱为空或格式不像邮箱";
+            return false;
+        }
+
+        if (LooksLikeEmail(password) || password.Contains("--", StringComparison.Ordinal))
+        {
+            error = "三行格式不完整，第二行应为密码";
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(password))
+        {
+            error = "密码为空";
+            return false;
+        }
+
+        account = new AccountRecord
+        {
+            Email = email,
+            Password = password,
+            TwoFa = TotpService.NormalizeSecretForStorage(twofa),
+            Category = defaultCategory.Trim(),
+            Tags = AccountDatabase.NormalizeTagsForStorage(defaultTags),
+            Remark = string.Empty,
+            CreatedAt = DateTime.Now,
+            UpdatedAt = DateTime.Now
+        };
+        return true;
     }
 
     public static ImportPreviewResult PreviewPlainText(
@@ -106,7 +177,7 @@ public static class AccountImportExport
         var twofa = parts.Length >= 3 ? TotpService.NormalizeSecretForStorage(parts[2]) : string.Empty;
         var remark = parts.Length >= 4 ? string.Join("--", parts.Skip(3)).Trim() : string.Empty;
 
-        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+        if (!LooksLikeEmail(email))
         {
             error = "邮箱为空或格式不像邮箱";
             return null;
@@ -130,6 +201,13 @@ public static class AccountImportExport
             UpdatedAt = DateTime.Now
         };
     }
+
+    private static bool LooksLikeEmail(string value)
+    {
+        return !string.IsNullOrWhiteSpace(value) && value.Contains('@');
+    }
+
+    private sealed record ImportLine(int LineNumber, string Text);
 
     public static void WriteTextExport(string path, IEnumerable<AccountRecord> accounts)
     {

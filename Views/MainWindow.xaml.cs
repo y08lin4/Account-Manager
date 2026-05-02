@@ -20,6 +20,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private const int ClipboardClearSeconds = 30;
     private const string CompactWindowMode = "compact";
     private const string ExpandedWindowMode = "expanded";
+    private const string NoCategoryFilter = "__NO_CATEGORY__";
 
     private readonly AccountDatabase _database;
     private readonly SecurityService _security;
@@ -126,6 +127,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         _categoryFilters.Clear();
         _categoryFilters.Add(new FilterItem("", "全部", _allAccounts.Count));
+        var noCategoryCount = _allAccounts.Count(a => string.IsNullOrWhiteSpace(a.Category));
+        if (noCategoryCount > 0)
+        {
+            _categoryFilters.Add(new FilterItem(NoCategoryFilter, "无分组", noCategoryCount));
+        }
+
         foreach (var item in _allAccounts
                      .Where(a => !string.IsNullOrWhiteSpace(a.Category))
                      .GroupBy(a => a.Category.Trim(), StringComparer.OrdinalIgnoreCase)
@@ -156,7 +163,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_refreshingFilters) return;
         var category = (CategoryListBox.SelectedItem as FilterItem)?.Name ?? string.Empty;
         var tag = (TagListBox.SelectedItem as FilterItem)?.Name ?? string.Empty;
-        var filtered = AccountSearch.Filter(_allAccounts, SearchText, category, tag);
+        var source = string.Equals(category, NoCategoryFilter, StringComparison.Ordinal)
+            ? _allAccounts.Where(a => string.IsNullOrWhiteSpace(a.Category))
+            : _allAccounts;
+        var categoryFilter = string.Equals(category, NoCategoryFilter, StringComparison.Ordinal) ? string.Empty : category;
+        var filtered = AccountSearch.Filter(source, SearchText, categoryFilter, tag);
 
         _visibleAccounts.Clear();
         foreach (var account in filtered) _visibleAccounts.Add(account);
@@ -725,7 +736,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void OpenImportWindow(string initialText, string sourceDescription = "")
     {
-        var window = new ImportTextWindow(initialText, sourceDescription: sourceDescription, existingEmails: _allAccounts.Select(a => a.Email)) { Owner = this };
+        var window = new ImportTextWindow(
+            initialText,
+            sourceDescription: sourceDescription,
+            existingEmails: _allAccounts.Select(a => a.Email),
+            existingCategories: _database.GetCategories(),
+            existingTags: _database.GetTags())
+        { Owner = this };
         if (window.ShowDialog() != true) return;
 
         ImportParsedText(window.ImportText, window.DefaultCategory, window.DefaultTags, window.DuplicateMode);
@@ -733,7 +750,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void OpenQuickImportWindow(string initialText)
     {
-        var window = new QuickImportWindow(initialText, existingEmails: _allAccounts.Select(a => a.Email)) { Owner = this };
+        var window = new QuickImportWindow(
+            initialText,
+            existingEmails: _allAccounts.Select(a => a.Email),
+            existingCategories: _database.GetCategories(),
+            existingTags: _database.GetTags())
+        { Owner = this };
         if (window.ShowDialog() != true) return;
 
         ImportParsedText(window.ImportText, window.DefaultCategory, window.DefaultTags, window.DuplicateMode);

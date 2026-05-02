@@ -2,6 +2,7 @@
 using AccountManager.Services;
 using System.Text;
 using System.Windows;
+using System.Windows.Input;
 
 namespace AccountManager;
 
@@ -19,10 +20,18 @@ public partial class QuickImportWindow : Window
         _ => DuplicateMode.Skip
     };
 
-    public QuickImportWindow(string initialText = "", string defaultCategory = "", string defaultTags = "", IEnumerable<string>? existingEmails = null)
+    public QuickImportWindow(
+        string initialText = "",
+        string defaultCategory = "",
+        string defaultTags = "",
+        IEnumerable<string>? existingEmails = null,
+        IEnumerable<string>? existingCategories = null,
+        IEnumerable<string>? existingTags = null)
     {
         InitializeComponent();
         _existingEmails = existingEmails?.ToList() ?? new List<string>();
+        CategoryBox.ItemsSource = BuildOptions(existingCategories);
+        TagsBox.ItemsSource = BuildOptions(existingTags);
         ImportTextBox.Text = initialText;
         CategoryBox.Text = defaultCategory;
         TagsBox.Text = defaultTags;
@@ -31,6 +40,16 @@ public partial class QuickImportWindow : Window
             ImportTextBox.Focus();
             UpdatePreview();
         };
+    }
+
+    private static List<string> BuildOptions(IEnumerable<string>? values)
+    {
+        return (values ?? Enumerable.Empty<string>())
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private void Preview_Click(object sender, RoutedEventArgs e) => UpdatePreview();
@@ -76,6 +95,42 @@ public partial class QuickImportWindow : Window
         ImportTextBox.Text = e.Data.GetData(DataFormats.Text) as string ?? string.Empty;
         UpdatePreview();
         e.Handled = true;
+    }
+
+    private async void ImportTextBox_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        ImportTextBox.Focus();
+
+        var clipboardText = await NativeClipboardService.GetTextAsync();
+        if (string.IsNullOrWhiteSpace(clipboardText))
+        {
+            PreviewText.Text = "剪贴板没有文本";
+            return;
+        }
+
+        AppendTextAsNewLines(clipboardText);
+        UpdatePreview();
+    }
+
+    private void AppendTextAsNewLines(string text)
+    {
+        var normalized = text.Replace("\r\n", "\n").Replace('\r', '\n').Trim('\n');
+        if (string.IsNullOrWhiteSpace(normalized)) return;
+
+        var current = ImportTextBox.Text;
+        var builder = new StringBuilder(current);
+        if (builder.Length > 0 && !current.EndsWith("\r\n", StringComparison.Ordinal) && !current.EndsWith('\n'))
+        {
+            builder.AppendLine();
+        }
+
+        builder.Append(normalized.Replace("\n", Environment.NewLine));
+        builder.AppendLine();
+
+        ImportTextBox.Text = builder.ToString();
+        ImportTextBox.CaretIndex = ImportTextBox.Text.Length;
+        ImportTextBox.ScrollToEnd();
     }
 
     private ImportPreviewResult UpdatePreview()

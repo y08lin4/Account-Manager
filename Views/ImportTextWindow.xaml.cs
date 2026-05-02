@@ -19,10 +19,19 @@ public partial class ImportTextWindow : Window
         _ => DuplicateMode.Skip
     };
 
-    public ImportTextWindow(string initialText = "", string defaultCategory = "", string defaultTags = "", string sourceDescription = "", IEnumerable<string>? existingEmails = null)
+    public ImportTextWindow(
+        string initialText = "",
+        string defaultCategory = "",
+        string defaultTags = "",
+        string sourceDescription = "",
+        IEnumerable<string>? existingEmails = null,
+        IEnumerable<string>? existingCategories = null,
+        IEnumerable<string>? existingTags = null)
     {
         InitializeComponent();
         _existingEmails = existingEmails?.ToList() ?? new List<string>();
+        CategoryBox.ItemsSource = BuildOptions(existingCategories);
+        TagsBox.ItemsSource = BuildOptions(existingTags);
         ImportTextBox.Text = initialText;
         CategoryBox.Text = defaultCategory;
         TagsBox.Text = defaultTags;
@@ -32,6 +41,16 @@ public partial class ImportTextWindow : Window
             ImportTextBox.Focus();
             UpdatePreview();
         };
+    }
+
+    private static List<string> BuildOptions(IEnumerable<string>? values)
+    {
+        return (values ?? Enumerable.Empty<string>())
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private void Preview_Click(object sender, RoutedEventArgs e)

@@ -28,9 +28,17 @@
             </Grid.ColumnDefinitions>
 
             <TextBlock Text="分类" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <TextBox x:Name="CategoryBox" Grid.Column="1" Height="26"/>
+            <ComboBox x:Name="CategoryBox"
+                      Grid.Column="1"
+                      Height="26"
+                      IsEditable="True"
+                      IsTextSearchEnabled="True"/>
             <TextBlock Grid.Column="2" Text="标签" VerticalAlignment="Center" Margin="12,0,6,0"/>
-            <TextBox x:Name="TagsBox" Grid.Column="3" Height="26"/>
+            <ComboBox x:Name="TagsBox"
+                      Grid.Column="3"
+                      Height="26"
+                      IsEditable="True"
+                      IsTextSearchEnabled="True"/>
             <TextBlock Grid.Column="4" Text="重复" VerticalAlignment="Center" Margin="12,0,6,0"/>
             <ComboBox x:Name="DuplicateBox" Grid.Column="5" SelectedIndex="0" Height="26" SelectionChanged="DuplicateBox_SelectionChanged">
                 <ComboBoxItem Content="跳过"/>
@@ -42,7 +50,7 @@
         </Grid>
 
         <TextBlock Grid.Row="1"
-                   Text="一行一个：邮箱--密码--2FA，连续 2 个及以上 - 都可作为分隔符。"
+                   Text="支持：邮箱--密码--2FA，或三行一组：邮箱 / 密码 / 2FA。右键粘贴会自动追加换行。"
                    Style="{StaticResource MutedText}"
                    Margin="0,0,0,6"/>
 
@@ -56,7 +64,8 @@
                  HorizontalScrollBarVisibility="Auto"
                  TextWrapping="NoWrap"
                  FontFamily="Consolas"
-                 SpellCheck.IsEnabled="False"/>
+                 SpellCheck.IsEnabled="False"
+                 PreviewMouseRightButtonDown="ImportTextBox_PreviewMouseRightButtonDown"/>
 
         <Grid Grid.Row="3" Height="92" Margin="0,8,0,0">
             <Grid.RowDefinitions>

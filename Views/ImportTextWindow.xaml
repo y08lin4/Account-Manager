@@ -23,9 +23,17 @@
             </Grid.ColumnDefinitions>
 
             <TextBlock Text="分类" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <TextBox x:Name="CategoryBox" Grid.Column="1" Height="26"/>
+            <ComboBox x:Name="CategoryBox"
+                      Grid.Column="1"
+                      Height="26"
+                      IsEditable="True"
+                      IsTextSearchEnabled="True"/>
             <TextBlock Grid.Column="2" Text="标签" VerticalAlignment="Center" Margin="12,0,6,0"/>
-            <TextBox x:Name="TagsBox" Grid.Column="3" Height="26"/>
+            <ComboBox x:Name="TagsBox"
+                      Grid.Column="3"
+                      Height="26"
+                      IsEditable="True"
+                      IsTextSearchEnabled="True"/>
             <TextBlock Grid.Column="4" Text="重复" VerticalAlignment="Center" Margin="12,0,6,0"/>
             <ComboBox x:Name="DuplicateBox" Grid.Column="5" SelectedIndex="0" Height="26" SelectionChanged="DuplicateBox_SelectionChanged">
                 <ComboBoxItem Content="跳过"/>
@@ -40,7 +48,7 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal">
-                <TextBlock Text="邮箱--密码--2FA / 邮箱---密码---2FA" Foreground="{StaticResource SubTextBrush}"/>
+                <TextBlock Text="邮箱--密码--2FA / 三行一组：邮箱 / 密码 / 2FA" Foreground="{StaticResource SubTextBrush}"/>
                 <TextBlock x:Name="SourceText" Foreground="{StaticResource SubTextBrush}" Margin="12,0,0,0"/>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal">
