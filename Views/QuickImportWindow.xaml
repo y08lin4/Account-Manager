@@ -50,7 +50,7 @@
         </Grid>
 
         <TextBlock Grid.Row="1"
-                   Text="支持：邮箱--密码--2FA，或三行一组：邮箱 / 密码 / 2FA。右键粘贴会自动追加换行。"
+                   Text="支持：邮箱--密码--2FA，或三行一组：邮箱 / 密码 / 2FA；行尾 -- 会自动忽略。右键粘贴会自动追加换行。"
                    Style="{StaticResource MutedText}"
                    Margin="0,0,0,6"/>
 

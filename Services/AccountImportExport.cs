@@ -48,7 +48,8 @@ public static class AccountImportExport
 
     private static bool CanStartThreeLineAccount(string line)
     {
-        return !line.Contains("--", StringComparison.Ordinal) && LooksLikeEmail(line);
+        var email = TrimTrailingSeparators(line);
+        return LooksLikeEmail(email) && !HasSeparator(email);
     }
 
     private static bool TryParseThreeLineAccount(
@@ -68,9 +69,9 @@ public static class AccountImportExport
             return false;
         }
 
-        var email = lines[startIndex].Text.Trim();
-        var password = lines[startIndex + 1].Text;
-        var twofa = lines[startIndex + 2].Text;
+        var email = TrimTrailingSeparators(lines[startIndex].Text);
+        var password = TrimTrailingSeparators(lines[startIndex + 1].Text);
+        var twofa = TrimTrailingSeparators(lines[startIndex + 2].Text);
 
         if (!LooksLikeEmail(email))
         {
@@ -78,7 +79,7 @@ public static class AccountImportExport
             return false;
         }
 
-        if (LooksLikeEmail(password) || password.Contains("--", StringComparison.Ordinal))
+        if (LooksLikeEmail(password) || HasSeparator(password))
         {
             error = "三行格式不完整，第二行应为密码";
             return false;
@@ -205,6 +206,16 @@ public static class AccountImportExport
     private static bool LooksLikeEmail(string value)
     {
         return !string.IsNullOrWhiteSpace(value) && value.Contains('@');
+    }
+
+    private static string TrimTrailingSeparators(string value)
+    {
+        return Regex.Replace((value ?? string.Empty).Trim(), "-{2,}\\s*$", string.Empty).Trim();
+    }
+
+    private static bool HasSeparator(string value)
+    {
+        return Regex.IsMatch(value ?? string.Empty, "-{2,}");
     }
 
     private sealed record ImportLine(int LineNumber, string Text);

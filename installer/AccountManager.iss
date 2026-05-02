@@ -1,5 +1,5 @@
 ﻿#define MyAppName "AccountManager"
-#define MyAppVersion "0.5.7"
+#define MyAppVersion "0.5.8"
 #define MyAppPublisher "AccountManager"
 #define MyAppExeName "AccountManager.exe"
 #define SourceDir "..\dist\installed\app"
