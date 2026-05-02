@@ -1,4 +1,5 @@
-﻿using System.Windows;
+using AccountManager.Services;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
@@ -80,7 +81,8 @@ public sealed class HighlightedTextBlock : TextBlock
             return;
         }
 
-        if (query.Contains(text, StringComparison.OrdinalIgnoreCase))
+        if (query.Contains(text, StringComparison.OrdinalIgnoreCase)
+            || AccountSearch.ContainsEitherWay(text, query))
         {
             Inlines.Add(new Run(text)
             {
