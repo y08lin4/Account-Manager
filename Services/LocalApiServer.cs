@@ -283,7 +283,7 @@ public sealed class LocalApiServer : IDisposable
         {
             Email = body.Email.Trim(),
             Password = body.Password,
-            TwoFa = body.TwoFa.Trim(),
+            TwoFa = TotpService.NormalizeSecretForStorage(body.TwoFa),
             Category = body.Category.Trim(),
             Tags = body.Tags,
             Remark = body.Remark.Trim()
@@ -312,7 +312,7 @@ public sealed class LocalApiServer : IDisposable
 
         if (body.Email is not null) account.Email = body.Email.Trim();
         if (body.Password is not null) account.Password = body.Password;
-        if (body.TwoFa is not null) account.TwoFa = body.TwoFa.Trim();
+        if (body.TwoFa is not null) account.TwoFa = TotpService.NormalizeSecretForStorage(body.TwoFa);
         if (body.Category is not null) account.Category = body.Category.Trim();
         if (body.Tags is not null) account.Tags = body.Tags;
         if (body.Remark is not null) account.Remark = body.Remark.Trim();

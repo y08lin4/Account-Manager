@@ -471,7 +471,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             Id = _editingId,
             Email = email,
             Password = password,
-            TwoFa = GetTwoFaText(),
+            TwoFa = TotpService.NormalizeSecretForStorage(GetTwoFaText()),
             Category = CategoryBox.Text,
             Tags = TagsBox.Text,
             Remark = RemarkBox.Text
@@ -1153,7 +1153,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void CommitTwoFaEdit()
     {
-        _twoFaSecret = TwoFaCodeBox.Text.Trim();
+        var original = TwoFaCodeBox.Text.Trim();
+        _twoFaSecret = TotpService.NormalizeSecretForStorage(original);
+        if (!string.Equals(original, _twoFaSecret, StringComparison.Ordinal))
+        {
+            StatusText.Text = "2FA密钥已规范化";
+        }
         _editingTwoFa = false;
         RefreshTotpDisplay();
     }

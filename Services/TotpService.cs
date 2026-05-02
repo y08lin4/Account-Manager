@@ -36,6 +36,37 @@ public static class TotpService
         return true;
     }
 
+    public static string NormalizeSecretForStorage(string secret)
+    {
+        var trimmed = (secret ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(trimmed)) return string.Empty;
+
+        return TryExtractTwoFaRunSecret(trimmed, out var extracted)
+            ? extracted
+            : trimmed;
+    }
+
+    private static bool TryExtractTwoFaRunSecret(string input, out string secret)
+    {
+        secret = string.Empty;
+        if (!Uri.TryCreate(input, UriKind.Absolute, out var uri)) return false;
+        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) return false;
+        if (!string.Equals(uri.Host, "2fa.run", StringComparison.OrdinalIgnoreCase)) return false;
+
+        var segments = uri.AbsolutePath
+            .Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Select(Uri.UnescapeDataString)
+            .ToArray();
+
+        if (segments.Length < 2 || !string.Equals(segments[0], "2fa", StringComparison.OrdinalIgnoreCase)) return false;
+
+        var candidate = segments[1].Trim();
+        if (string.IsNullOrWhiteSpace(candidate)) return false;
+
+        secret = candidate.ToUpperInvariant();
+        return true;
+    }
+
     private static bool TryDecodeBase32(string input, out byte[] bytes)
     {
         bytes = Array.Empty<byte>();

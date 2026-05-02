@@ -102,7 +102,7 @@ public static class AccountImportExport
 
         var email = parts[0].Trim();
         var password = parts[1];
-        var twofa = parts.Length >= 3 ? parts[2].Trim() : string.Empty;
+        var twofa = parts.Length >= 3 ? TotpService.NormalizeSecretForStorage(parts[2]) : string.Empty;
         var remark = parts.Length >= 4 ? string.Join("--", parts.Skip(3)).Trim() : string.Empty;
 
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
