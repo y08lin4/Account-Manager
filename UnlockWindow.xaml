@@ -53,6 +53,8 @@
                     Grid.Column="1"
                     Content="&#xE890;"
                     FontFamily="Segoe MDL2 Assets"
+                    Padding="0"
+                    MinWidth="0"
                     Width="34"
                     Height="28"
                     ToolTip="显示/隐藏"

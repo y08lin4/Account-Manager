@@ -225,7 +225,7 @@
                     <StackPanel>
                         <TextBlock Style="{StaticResource FieldLabel}" Text="邮箱"/>
                         <TextBox x:Name="EmailBox"
-                                 Height="28"
+                                 Height="30"
                                  IsReadOnly="True"
                                  ToolTip="单击复制，双击编辑"
                                  PreviewMouseLeftButtonDown="EmailBox_PreviewMouseLeftButtonDown"
@@ -239,7 +239,7 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBox x:Name="PasswordBox"
-                                     Height="28"
+                                     Height="30"
                                      IsReadOnly="True"
                                      ToolTip="单击复制，双击编辑"
                                      PreviewMouseLeftButtonDown="PasswordBox_PreviewMouseLeftButtonDown"
@@ -247,10 +247,12 @@
                                      KeyDown="EditorBox_KeyDown"/>
                             <Button x:Name="TogglePasswordButton"
                                     Grid.Column="1"
+                                    Padding="0"
+                                    MinWidth="0"
                                     FontFamily="Segoe MDL2 Assets"
                                     Content="&#xE890;"
                                     Width="34"
-                                    Height="26"
+                                    Height="30"
                                     Margin="4,0,0,0"
                                     ToolTip="显示/隐藏密码"
                                     Click="TogglePassword_Click"/>
@@ -262,7 +264,7 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <TextBox x:Name="TwoFaCodeBox"
-                                     Height="28"
+                                     Height="30"
                                      IsReadOnly="True"
                                      FontFamily="Consolas"
                                      FontSize="15"
@@ -273,10 +275,10 @@
                         </Grid>
 
                         <TextBlock Style="{StaticResource FieldLabel}" Text="分类"/>
-                        <TextBox x:Name="CategoryBox" Height="28"/>
+                        <TextBox x:Name="CategoryBox" Height="30"/>
 
                         <TextBlock Style="{StaticResource FieldLabel}" Text="标签"/>
-                        <TextBox x:Name="TagsBox" Height="28"/>
+                        <TextBox x:Name="TagsBox" Height="30"/>
 
                         <TextBlock Style="{StaticResource FieldLabel}" Text="备注"/>
                         <TextBox x:Name="RemarkBox" Height="96" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
