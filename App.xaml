@@ -146,6 +146,14 @@
             </Setter>
         </Style>
 
+        <Style x:Key="MultiLineTextBox" TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Height" Value="Auto"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="Padding" Value="8"/>
+        </Style>
+
         <Style TargetType="{x:Type PasswordBox}">
             <Setter Property="Height" Value="30"/>
             <Setter Property="Padding" Value="8,2"/>

@@ -281,7 +281,7 @@
                         <TextBox x:Name="TagsBox" Height="30"/>
 
                         <TextBlock Style="{StaticResource FieldLabel}" Text="备注"/>
-                        <TextBox x:Name="RemarkBox" Height="96" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+                        <TextBox x:Name="RemarkBox" Style="{StaticResource MultiLineTextBox}" Height="96" TextWrapping="Wrap"/>
                     </StackPanel>
                 </ScrollViewer>
 

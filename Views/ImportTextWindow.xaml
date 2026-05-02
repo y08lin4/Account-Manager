@@ -51,13 +51,11 @@
 
         <TextBox x:Name="ImportTextBox"
                  Grid.Row="2"
+                 Style="{StaticResource MultiLineTextBox}"
                  Height="Auto"
                  MinHeight="260"
                  VerticalAlignment="Stretch"
-                 VerticalContentAlignment="Top"
-                 AcceptsReturn="True"
                  AcceptsTab="True"
-                 VerticalScrollBarVisibility="Auto"
                  HorizontalScrollBarVisibility="Auto"
                  TextWrapping="NoWrap"
                  FontFamily="Consolas"
@@ -71,12 +69,11 @@
             <TextBlock x:Name="PreviewText" Foreground="{StaticResource SubTextBrush}"/>
             <TextBox x:Name="PreviewErrorsBox"
                      Grid.Row="1"
+                     Style="{StaticResource MultiLineTextBox}"
                      Height="Auto"
                      Margin="0,4,0,0"
                      IsReadOnly="True"
                      VerticalAlignment="Stretch"
-                     VerticalContentAlignment="Top"
-                     VerticalScrollBarVisibility="Auto"
                      BorderBrush="{StaticResource BorderBrushLight}"/>
         </Grid>
     </Grid>

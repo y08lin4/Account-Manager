@@ -8,9 +8,9 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>AccountManager</AssemblyName>
     <RootNamespace>AccountManager</RootNamespace>
-    <Version>0.5.4</Version>
-    <FileVersion>0.5.4.0</FileVersion>
-    <AssemblyVersion>0.5.4.0</AssemblyVersion>
+    <Version>0.5.5</Version>
+    <FileVersion>0.5.5.0</FileVersion>
+    <AssemblyVersion>0.5.5.0</AssemblyVersion>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 
