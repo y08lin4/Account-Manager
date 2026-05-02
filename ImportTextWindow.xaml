@@ -33,8 +33,8 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal">
-                <TextBlock Text="邮箱--密码--2FA" Foreground="#555"/>
-                <TextBlock x:Name="SourceText" Foreground="#777" Margin="12,0,0,0"/>
+                <TextBlock Text="邮箱--密码--2FA" Foreground="{StaticResource SubTextBrush}"/>
+                <TextBlock x:Name="SourceText" Foreground="{StaticResource SubTextBrush}" Margin="12,0,0,0"/>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal">
                 <Button Content="预览" Width="72" Height="26" Margin="0,0,6,0" Click="Preview_Click"/>
@@ -47,8 +47,8 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <TextBlock x:Name="PreviewText" Foreground="#555"/>
-            <TextBox x:Name="PreviewErrorsBox" Grid.Row="1" Margin="0,4,0,0" IsReadOnly="True" VerticalScrollBarVisibility="Auto" BorderBrush="#DDD"/>
+            <TextBlock x:Name="PreviewText" Foreground="{StaticResource SubTextBrush}"/>
+            <TextBox x:Name="PreviewErrorsBox" Grid.Row="1" Margin="0,4,0,0" IsReadOnly="True" VerticalScrollBarVisibility="Auto" BorderBrush="{StaticResource BorderBrushLight}"/>
         </Grid>
 
         <TextBox x:Name="ImportTextBox" AcceptsReturn="True" AcceptsTab="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" TextWrapping="NoWrap" FontFamily="Consolas"/>

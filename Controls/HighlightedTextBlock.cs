@@ -7,6 +7,10 @@ namespace AccountManager.Controls;
 
 public sealed class HighlightedTextBlock : TextBlock
 {
+    private static readonly Brush DirectMatchBackground = new SolidColorBrush(Color.FromRgb(255, 244, 196));
+    private static readonly Brush PartialMatchBackground = new SolidColorBrush(Color.FromRgb(224, 247, 232));
+    private static readonly Brush HighlightForeground = new SolidColorBrush(Color.FromRgb(31, 41, 51));
+
     public static readonly DependencyProperty TextValueProperty = DependencyProperty.Register(
         nameof(TextValue),
         typeof(string),
@@ -63,8 +67,8 @@ public sealed class HighlightedTextBlock : TextBlock
 
                 Inlines.Add(new Run(text.Substring(index, query.Length))
                 {
-                    Background = Brushes.Gold,
-                    Foreground = Brushes.Black,
+                    Background = DirectMatchBackground,
+                    Foreground = HighlightForeground,
                     FontWeight = FontWeights.SemiBold
                 });
 
@@ -80,8 +84,8 @@ public sealed class HighlightedTextBlock : TextBlock
         {
             Inlines.Add(new Run(text)
             {
-                Background = Brushes.LightGreen,
-                Foreground = Brushes.Black,
+                Background = PartialMatchBackground,
+                Foreground = HighlightForeground,
                 FontWeight = FontWeights.SemiBold
             });
             return;

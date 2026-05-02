@@ -8,7 +8,7 @@
         DragOver="MainWindow_DragOver"
         Drop="MainWindow_Drop">
     <Window.Resources>
-        <Style x:Key="IconButton" TargetType="Button">
+        <Style x:Key="IconButton" BasedOn="{StaticResource {x:Type Button}}" TargetType="Button">
             <Setter Property="Width" Value="32"/>
             <Setter Property="Height" Value="28"/>
             <Setter Property="Margin" Value="0,0,4,0"/>
@@ -17,7 +17,7 @@
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
-        <Style x:Key="ToolbarTextButton" TargetType="Button">
+        <Style x:Key="ToolbarTextButton" BasedOn="{StaticResource {x:Type Button}}" TargetType="Button">
             <Setter Property="Height" Value="28"/>
             <Setter Property="Margin" Value="0,0,6,0"/>
             <Setter Property="Padding" Value="9,0"/>
@@ -33,11 +33,11 @@
         </Style>
         <Style x:Key="FieldLabel" TargetType="TextBlock">
             <Setter Property="Margin" Value="0,8,0,3"/>
-            <Setter Property="Foreground" Value="#666"/>
+            <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
         </Style>
     </Window.Resources>
 
-    <DockPanel Background="White">
+    <DockPanel Background="{StaticResource SurfaceBrush}">
         <StackPanel DockPanel.Dock="Top" Margin="8,8,8,6">
             <DockPanel LastChildFill="True">
                 <Button x:Name="ViewModeButton"
@@ -52,8 +52,8 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="4,0,6,0" Foreground="#555"/>
-                    <TextBox x:Name="SearchBox" Grid.Column="1" Height="28" BorderBrush="#B8B8B8" TextChanged="SearchBox_TextChanged"/>
+                    <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="4,0,6,0" Foreground="{StaticResource SubTextBrush}"/>
+                    <TextBox x:Name="SearchBox" Grid.Column="1" Height="28" TextChanged="SearchBox_TextChanged"/>
                 </Grid>
             </DockPanel>
 
@@ -93,8 +93,8 @@
             </StackPanel>
         </StackPanel>
 
-        <Border DockPanel.Dock="Bottom" BorderBrush="#DDD" BorderThickness="0,1,0,0" Padding="8,4">
-            <TextBlock x:Name="StatusText" FontSize="12" Foreground="#555" TextTrimming="CharacterEllipsis"/>
+        <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource BorderBrushLight}" BorderThickness="0,1,0,0" Padding="8,4">
+            <TextBlock x:Name="StatusText" FontSize="12" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
         </Border>
 
         <Grid x:Name="MainContentGrid" Margin="8,0,8,8">
@@ -124,12 +124,12 @@
                 <ListBox x:Name="TagListBox" Grid.Row="3" BorderThickness="0" SelectionChanged="SidebarFilter_SelectionChanged" DisplayMemberPath="DisplayName"/>
             </Grid>
 
-            <Border x:Name="FirstVerticalSeparator" Grid.Row="0" Grid.Column="1" Background="#DDD"/>
+            <Border x:Name="FirstVerticalSeparator" Grid.Row="0" Grid.Column="1" Background="{StaticResource BorderBrushLight}"/>
 
             <Grid x:Name="ListPanel" Grid.Row="0" Grid.Column="2" Margin="8,0">
                 <DataGrid x:Name="AccountsGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
                           CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
-                          GridLinesVisibility="Horizontal" BorderBrush="#DDD" BorderThickness="1"
+                          GridLinesVisibility="Horizontal"
                           SelectionChanged="AccountsGrid_SelectionChanged"
                           MouseDoubleClick="AccountsGrid_MouseDoubleClick"
                           PreviewMouseRightButtonDown="AccountsGrid_PreviewMouseRightButtonDown">
@@ -171,7 +171,7 @@
 
                 <ListBox x:Name="CompactAccountsList"
                          Visibility="Collapsed"
-                         BorderBrush="#DDD"
+                         BorderBrush="{StaticResource BorderBrushLight}"
                          BorderThickness="1"
                          SelectionChanged="CompactAccountsList_SelectionChanged"
                          MouseDoubleClick="CompactAccountsList_MouseDoubleClick"
@@ -189,30 +189,28 @@
                     </ListBox.ContextMenu>
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Border BorderBrush="#EEE" BorderThickness="0,0,0,1" Padding="4,6">
-                                <StackPanel>
-                                    <controls:HighlightedTextBlock TextValue="{Binding Email}"
-                                                                   Query="{Binding DataContext.SearchText, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                   FontWeight="SemiBold"
-                                                                   TextTrimming="CharacterEllipsis"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                                        <TextBlock Text="{Binding Category}" Foreground="#666" FontSize="12" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Text=" · " Foreground="#999" FontSize="12"/>
-                                        <TextBlock Text="{Binding Tags}" Foreground="#666" FontSize="12" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Text=" · " Foreground="#999" FontSize="12"/>
-                                        <TextBlock Text="{Binding UpdatedAt, StringFormat=MM-dd HH:mm}" Foreground="#666" FontSize="12"/>
-                                    </StackPanel>
+                            <StackPanel Margin="2,2">
+                                <controls:HighlightedTextBlock TextValue="{Binding Email}"
+                                                               Query="{Binding DataContext.SearchText, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                               FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                    <TextBlock Text="{Binding Category}" Foreground="{StaticResource SubTextBrush}" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text=" · " Foreground="{StaticResource SubTextBrush}" FontSize="12"/>
+                                    <TextBlock Text="{Binding Tags}" Foreground="{StaticResource SubTextBrush}" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text=" · " Foreground="{StaticResource SubTextBrush}" FontSize="12"/>
+                                    <TextBlock Text="{Binding UpdatedAt, StringFormat=MM-dd HH:mm}" Foreground="{StaticResource SubTextBrush}" FontSize="12"/>
                                 </StackPanel>
-                            </Border>
+                            </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
 
-                <TextBlock x:Name="EmptyHintText" Text="拖入 TXT 或点击导入" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#888" Visibility="Collapsed"/>
+                <TextBlock x:Name="EmptyHintText" Text="拖入 TXT 或点击导入" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource SubTextBrush}" Visibility="Collapsed"/>
             </Grid>
 
-            <Border x:Name="SecondVerticalSeparator" Grid.Row="0" Grid.Column="3" Background="#DDD"/>
-            <Border x:Name="HorizontalSeparator" Grid.Row="1" Grid.Column="2" Background="#DDD" Visibility="Collapsed"/>
+            <Border x:Name="SecondVerticalSeparator" Grid.Row="0" Grid.Column="3" Background="{StaticResource BorderBrushLight}"/>
+            <Border x:Name="HorizontalSeparator" Grid.Row="1" Grid.Column="2" Background="{StaticResource BorderBrushLight}" Visibility="Collapsed"/>
 
             <Grid x:Name="DetailPanel" Grid.Row="0" Grid.Column="4" Margin="8,0,0,0">
                 <Grid.RowDefinitions>

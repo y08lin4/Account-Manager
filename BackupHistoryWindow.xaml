@@ -5,7 +5,7 @@
         WindowStartupLocation="CenterOwner">
     <DockPanel Margin="12">
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-            <TextBlock x:Name="DirectoryText" VerticalAlignment="Center" Foreground="#555" TextTrimming="CharacterEllipsis"/>
+            <TextBlock x:Name="DirectoryText" VerticalAlignment="Center" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
                 <Button Content="刷新" Width="64" Height="28" Margin="8,0,0,0" Click="Refresh_Click"/>
                 <Button Content="打开目录" Width="82" Height="28" Margin="8,0,0,0" Click="OpenDirectory_Click"/>
@@ -25,9 +25,7 @@
                   CanUserAddRows="False"
                   CanUserDeleteRows="False"
                   HeadersVisibility="Column"
-                  GridLinesVisibility="Horizontal"
-                  BorderBrush="#DDD"
-                  BorderThickness="1">
+                  GridLinesVisibility="Horizontal">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="文件" Binding="{Binding Name}" Width="*"/>
                 <DataGridTextColumn Header="时间" Binding="{Binding LastWriteTime, StringFormat=yyyy-MM-dd HH:mm:ss}" Width="150"/>

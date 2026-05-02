@@ -12,7 +12,7 @@
 
         <StackPanel Grid.Row="0" Margin="0,0,0,16">
             <TextBlock x:Name="TitleText" Text="首次使用：设置主密码" FontSize="20" FontWeight="SemiBold"/>
-            <TextBlock Text="主密码用于解锁软件；保护问题用于忘记主密码时重置。备份恢复后仍需要输入对应主密码。" TextWrapping="Wrap" Foreground="#666" Margin="0,8,0,0"/>
+            <TextBlock Text="主密码用于解锁软件；保护问题用于忘记主密码时重置。备份恢复后仍需要输入对应主密码。" Style="{StaticResource MutedText}" Margin="0,8,0,0"/>
         </StackPanel>
 
         <Grid Grid.Row="1">
@@ -48,7 +48,7 @@
             <TextBlock Grid.Row="5" Grid.Column="0" Text="确认答案" VerticalAlignment="Center" Margin="0,0,12,10"/>
             <PasswordBox x:Name="ConfirmAnswerBox" Grid.Row="5" Grid.Column="1" Height="30" Margin="0,0,0,10"/>
 
-            <TextBlock Grid.Row="6" Grid.Column="1" Text="注意：提示词会明文显示；保护答案用于重置主密码，请不要太简单。" Foreground="#777" TextWrapping="Wrap"/>
+            <TextBlock Grid.Row="6" Grid.Column="1" Text="注意：提示词会明文显示；保护答案用于重置主密码，请不要太简单。" Style="{StaticResource MutedText}"/>
         </Grid>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">

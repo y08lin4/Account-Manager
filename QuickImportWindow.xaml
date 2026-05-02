@@ -39,8 +39,8 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <TextBlock x:Name="PreviewText" Foreground="#555"/>
-            <TextBox x:Name="PreviewErrorsBox" Grid.Row="1" Margin="0,4,0,0" IsReadOnly="True" VerticalScrollBarVisibility="Auto" BorderBrush="#DDD"/>
+            <TextBlock x:Name="PreviewText" Foreground="{StaticResource SubTextBrush}"/>
+            <TextBox x:Name="PreviewErrorsBox" Grid.Row="1" Margin="0,4,0,0" IsReadOnly="True" VerticalScrollBarVisibility="Auto" BorderBrush="{StaticResource BorderBrushLight}"/>
         </Grid>
 
         <TextBox x:Name="ImportTextBox"

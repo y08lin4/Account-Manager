@@ -77,10 +77,12 @@ public partial class UnlockWindow : Window
     {
         var length = HiddenPasswordBox.Password.Length;
         var dots = new[] { Dot1, Dot2, Dot3, Dot4, Dot5, Dot6 };
+        var filledBrush = (Brush)(TryFindResource("TextBrush") ?? Brushes.Black);
+        var emptyBrush = (Brush)(TryFindResource("BorderBrushSoft") ?? Brushes.Gray);
         for (var i = 0; i < dots.Length; i++)
         {
-            dots[i].Fill = i < length ? Brushes.Black : Brushes.Transparent;
-            dots[i].Stroke = i < length ? Brushes.Black : Brushes.Gray;
+            dots[i].Fill = i < length ? filledBrush : Brushes.Transparent;
+            dots[i].Stroke = i < length ? filledBrush : emptyBrush;
         }
     }
 
